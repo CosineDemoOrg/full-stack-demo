@@ -230,6 +230,24 @@ General development docs: [development.md](./development.md).
 
 This includes using Docker Compose, custom local domains, `.env` configurations, etc.
 
+## Multi-tenant Orgs
+
+This project includes multi-tenant organizations:
+
+- Database tables: organization, membership (user_id, org_id, role, is_active), and item has org_id.
+- RBAC: only org admins can invite/remove members. All reads/writes are scoped by active org.
+- JWT: includes `active_org_id` claim. Use the Org Switcher in the navbar to change the active org. The backend issues a new token when switching.
+
+Run locally with Docker Compose:
+
+```bash
+docker-compose up --build
+```
+
+Then open the frontend at http://localhost:5173 and backend docs at http://localhost:8000/docs.
+
+Seed data creates 2 orgs and users. Login with the superuser from your `.env`.
+
 ## Release Notes
 
 Check the file [release-notes.md](./release-notes.md).

@@ -1,5 +1,7 @@
 import uuid
 
+from typing import Literal
+
 from pydantic import EmailStr
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -111,3 +113,9 @@ class TokenPayload(SQLModel):
 class NewPassword(SQLModel):
     token: str
     new_password: str = Field(min_length=8, max_length=40)
+
+
+class ConflictError(SQLModel):
+    error: Literal["conflict"]
+    field: str
+    message: str

@@ -224,6 +224,37 @@ Frontend docs: [frontend/README.md](./frontend/README.md).
 
 Deployment docs: [deployment.md](./deployment.md).
 
+## Notifications
+
+The template includes a notifications system for email flows (welcome, password recovery) with a provider interface.
+
+- Providers:
+  - `console`: logs email metadata to the backend logs. Useful for local development.
+  - `smtp`: sends real emails via SMTP using the settings in `.env`.
+
+Configure the provider in `.env`:
+
+```env
+# console by default for local
+NOTIFICATIONS_PROVIDER="console"
+# or use smtp
+NOTIFICATIONS_PROVIDER="smtp"
+
+# SMTP settings (required when using smtp)
+SMTP_HOST="smtp.example.com"
+SMTP_PORT=587
+SMTP_TLS=true
+SMTP_SSL=false
+SMTP_USER="apikey"
+SMTP_PASSWORD="..."
+EMAILS_FROM_EMAIL="noreply@example.com"
+EMAILS_FROM_NAME="My App"
+```
+
+Switching providers is runtime-configurable, no code changes required.
+
+Backend uses FastAPI BackgroundTasks to enqueue sending, so endpoints return quickly and the frontend shows optimistic UI.
+
 ## Development
 
 General development docs: [development.md](./development.md).

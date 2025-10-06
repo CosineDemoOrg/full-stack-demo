@@ -19,6 +19,26 @@ services:
       - POSTGRES_USER=${POSTGRES_USER?Variable not set}
       - POSTGRES_DB=${POSTGRES_DB?Variable not set}
 
+  # dbt service to build analytics models for Tableau
+  dbt:
+    image: ghcr.io/dbt-labs/dbt-postgres:latest
+    depends_on:
+      db:
+        condition: service_healthy
+        restart: true
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_SERVER=db
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER?Variable not set}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
+    working_dir: /usr/app
+    volumes:
+      - ./analytics/dbt:/usr/app
+    command: ["bash", "-lc", "dbt deps && dbt run --profiles-dir /usr/app && dbt test --profiles-dir /usr/app"]
+
   adminer:
     image: adminer
     restart: always

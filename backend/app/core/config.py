@@ -94,6 +94,12 @@ class Settings(BaseSettings):
     FIRST_SUPERUSER: EmailStr
     FIRST_SUPERUSER_PASSWORD: str
 
+    # ERP integration settings
+    ERP_BASE_URL: str = ""
+    ERP_API_KEY: str = ""
+    ERP_TENANT_ID: str = ""
+    ERP_WEBHOOK_SECRET: str = ""
+
     def _check_default_secret(self, var_name: str, value: str | None) -> None:
         if value == "changethis":
             message = (

@@ -1,11 +1,13 @@
 import uuid
 from typing import Any
+from datetime import datetime
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from sqlmodel import func, select
 
-from app.api.deps import CurrentUser, SessionDep
+from app.api.deps import CurrentUser, SessionDep, get_erp_client
 from app.models import Item, ItemCreate, ItemPublic, ItemsPublic, ItemUpdate, Message
+from app.services.erp_client import ERPClient
 
 router = APIRouter(prefix="/items", tags=["items"])
 
@@ -107,3 +109,46 @@ def delete_item(
     session.delete(item)
     session.commit()
     return Message(message="Item deleted successfully")
+
+
+@router.post("/{id}/sync", response_model=ItemPublic)
+def sync_item_to_erp(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    id: uuid.UUID,
+    background_tasks: BackgroundTasks,
+    erp: ERPClient = Depends(get_erp_client),
+) -> Any:
+    """
+    Enqueue sync of an item to the ERP and update local tracking fields.
+    """
+    item = session.get(Item, id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    if not current_user.is_superuser and (item.owner_id != current_user.id):
+        raise HTTPException(status_code=400, detail="Not enough permissions")
+
+    payload = {
+        "sku": str(item.id),
+        "name": item.title,
+        "description": item.description,
+    }
+
+    def do_sync():
+        resp = erp.create_product(payload)
+        external_id = resp.get("id") or resp.get("external_id")
+        if external_id:
+            item.external_id = external_id
+        item.synced_at = datetime.utcnow()
+        item.sync_status = "synced"
+        session.add(item)
+        session.commit()
+
+    background_tasks.add_task(do_sync)
+    # Optimistically set status
+    item.sync_status = "pending"
+    session.add(item)
+    session.commit()
+    session.refresh(item)
+    return item

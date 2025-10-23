@@ -41,6 +41,9 @@ class Settings(BaseSettings):
         list[AnyUrl] | str, BeforeValidator(parse_cors)
     ] = []
 
+    # Notifications
+    NOTIFICATIONS_PROVIDER: Literal["console", "smtp"] = "console"
+
     @computed_field  # type: ignore[prop-decorator]
     @property
     def all_cors_origins(self) -> list[str]:

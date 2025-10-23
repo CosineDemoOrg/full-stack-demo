@@ -7,7 +7,7 @@ from app.core.config import settings
 from app.core.security import verify_password
 from app.crud import create_user
 from app.models import UserCreate
-from app.utils import generate_password_reset_token
+from app.notifications.service import generate_password_reset_token
 from tests.utils.user import user_authentication_headers
 from tests.utils.utils import random_email, random_lower_string
 
@@ -48,17 +48,14 @@ def test_use_access_token(
 def test_recovery_password(
     client: TestClient, normal_user_token_headers: dict[str, str]
 ) -> None:
-    with (
-        patch("app.core.config.settings.SMTP_HOST", "smtp.example.com"),
-        patch("app.core.config.settings.SMTP_USER", "admin@example.com"),
-    ):
-        email = "test@example.com"
-        r = client.post(
-            f"{settings.API_V1_STR}/password-recovery/{email}",
-            headers=normal_user_token_headers,
-        )
-        assert r.status_code == 200
-        assert r.json() == {"message": "Password recovery email sent"}
+    # No need to patch SMTP now; sending is queued via background task and provider may be console
+    email = "test@example.com"
+    r = client.post(
+        f"{settings.API_V1_STR}/password-recovery/{email}",
+        headers=normal_user_token_headers,
+    )
+    assert r.status_code == 200
+    assert r.json() == {"message": "Password recovery email queued"}
 
 
 def test_recovery_password_user_not_exits(

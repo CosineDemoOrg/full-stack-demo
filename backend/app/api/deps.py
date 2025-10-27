@@ -6,12 +6,12 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
 from pydantic import ValidationError
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.core import security
 from app.core.config import settings
 from app.core.db import engine
-from app.models import TokenPayload, User
+from app.models import Membership, Organization, RoleEnum, TokenPayload, User
 
 reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_STR}/login/access-token"
@@ -55,3 +55,38 @@ def get_current_active_superuser(current_user: CurrentUser) -> User:
             status_code=403, detail="The user doesn't have enough privileges"
         )
     return current_user
+
+
+class ActiveOrg:
+    def __init__(self, org: Organization | None, role: RoleEnum | None):
+        self.org = org
+        self.role = role
+
+
+def get_active_org(session: SessionDep, token: TokenDep, current_user: CurrentUser) -> ActiveOrg:
+    try:
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[security.ALGORITHM]
+        )
+        token_data = TokenPayload(**payload)
+    except (InvalidTokenError, ValidationError):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Could not validate credentials",
+        )
+    org = None
+    role: RoleEnum | None = None
+    if token_data.active_org_id:
+        org = session.get(Organization, token_data.active_org_id)
+        if org:
+            statement = select(Membership).where(
+                Membership.user_id == current_user.id, Membership.org_id == org.id
+            )
+            membership = session.exec(statement).first()
+            if not membership:
+                raise HTTPException(status_code=403, detail="Not a member of active organization")
+            role = membership.role
+    return ActiveOrg(org, role)
+
+
+ActiveOrgDep = Annotated[ActiveOrg, Depends(get_active_org)]

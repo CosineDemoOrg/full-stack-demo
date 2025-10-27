@@ -7,7 +7,7 @@ import {
 import { type SubmitHandler, useForm } from "react-hook-form"
 import { FiLock, FiUser } from "react-icons/fi"
 
-import type { UserRegister } from "@/client"
+import type { ApiError, UserRegister } from "@/client"
 import { Button } from "@/components/ui/button"
 import { Field } from "@/components/ui/field"
 import { InputGroup } from "@/components/ui/input-group"
@@ -37,6 +37,7 @@ function SignUp() {
     register,
     handleSubmit,
     getValues,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<UserRegisterForm>({
     mode: "onBlur",
@@ -50,7 +51,22 @@ function SignUp() {
   })
 
   const onSubmit: SubmitHandler<UserRegisterForm> = (data) => {
-    signUpMutation.mutate(data)
+    signUpMutation.mutate(data, {
+      onError: (err: ApiError) => {
+        // Map 409 Conflict to inline field error using API error shape
+        const status = err.status
+        const body = err.body as any
+        if (status === 409 && body?.error === "conflict") {
+          const field = (body.field as "email" | "full_name" | undefined) ?? "email"
+          const message = (body.message as string) ?? "Already in use"
+          setError(field as any, { type: "server", message })
+          return
+        }
+        // fallback to default handler
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ;(signUpMutation as any).options?.onError?.(err)
+      },
+    })
   }
 
   return (

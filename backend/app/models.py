@@ -97,6 +97,13 @@ class Message(SQLModel):
     message: str
 
 
+# Standard API error (documented in OpenAPI)
+class APIError(SQLModel):
+    error: str  # e.g. "conflict"
+    field: str | None = None  # e.g. "email"
+    message: str  # e.g. "Already in use"
+
+
 # JSON payload containing access token
 class Token(SQLModel):
     access_token: str

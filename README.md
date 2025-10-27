@@ -212,6 +212,25 @@ The input variables, with their default values (some auto generated) are:
 - `postgres_password`: (default: `"changethis"`) The password for the PostgreSQL database, stored in .env, you can generate one with the method above.
 - `sentry_dsn`: (default: "") The DSN for Sentry, if you are using it, you can set it later in .env.
 
+## Notifications
+
+Email flows (welcome, password recovery, test email) are extracted under `backend/app/notifications/` with a provider interface. Providers include:
+- `console`: log notifications to the console (useful for local dev).
+- `smtp`: send emails via SMTP using the existing email templates.
+
+How to switch providers:
+- Set `NOTIFICATIONS_PROVIDER` in your `.env` to either `console` or `smtp`.
+- If `SMTP_HOST` and `EMAILS_FROM_EMAIL` are configured, the system will default to `smtp` automatically.
+
+Background sending:
+- The backend uses FastAPI `BackgroundTasks` to enqueue sends so API responses return immediately while the notification is sent in the background.
+
+Structured logging:
+- Notification sends emit structured logs with key=value pairs including the provider, recipient, subject, and result.
+
+Frontend optimistic UI:
+- The "Forgot password" page shows an immediate success toast while the backend schedules the email send.
+
 ## Backend Development
 
 Backend docs: [backend/README.md](./backend/README.md).

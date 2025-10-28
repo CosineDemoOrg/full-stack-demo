@@ -1,3 +1,4 @@
+import enum
 import uuid
 
 from pydantic import EmailStr
@@ -56,6 +57,53 @@ class UsersPublic(SQLModel):
     count: int
 
 
+# Organizations and membership
+
+class OrganizationBase(SQLModel):
+    name: str = Field(min_length=1, max_length=255)
+
+
+class Organization(OrganizationBase, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+
+
+class OrganizationPublic(OrganizationBase):
+    id: uuid.UUID
+
+
+class OrganizationsPublic(SQLModel):
+    data: list[OrganizationPublic]
+    count: int
+
+
+class OrgRole(str, enum.Enum):
+    admin = "admin"
+    member = "member"
+
+
+class MembershipBase(SQLModel):
+    role: OrgRole = Field(default=OrgRole.member)
+
+
+class Membership(MembershipBase, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    user_id: uuid.UUID = Field(foreign_key="user.id", nullable=False, ondelete="CASCADE")
+    org_id: uuid.UUID = Field(
+        foreign_key="organization.id", nullable=False, ondelete="CASCADE"
+    )
+
+
+class MembershipPublic(MembershipBase):
+    id: uuid.UUID
+    user_id: uuid.UUID
+    org_id: uuid.UUID
+
+
+class MembershipsPublic(SQLModel):
+    data: list[MembershipPublic]
+    count: int
+
+
 # Shared properties
 class ItemBase(SQLModel):
     title: str = Field(min_length=1, max_length=255)
@@ -78,6 +126,9 @@ class Item(ItemBase, table=True):
     owner_id: uuid.UUID = Field(
         foreign_key="user.id", nullable=False, ondelete="CASCADE"
     )
+    org_id: uuid.UUID = Field(
+        foreign_key="organization.id", nullable=False, ondelete="CASCADE"
+    )
     owner: User | None = Relationship(back_populates="items")
 
 
@@ -85,6 +136,7 @@ class Item(ItemBase, table=True):
 class ItemPublic(ItemBase):
     id: uuid.UUID
     owner_id: uuid.UUID
+    org_id: uuid.UUID
 
 
 class ItemsPublic(SQLModel):
@@ -106,6 +158,7 @@ class Token(SQLModel):
 # Contents of JWT token
 class TokenPayload(SQLModel):
     sub: str | None = None
+    active_org_id: str | None = None
 
 
 class NewPassword(SQLModel):

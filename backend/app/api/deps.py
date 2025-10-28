@@ -6,12 +6,12 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
 from pydantic import ValidationError
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.core import security
 from app.core.config import settings
 from app.core.db import engine
-from app.models import TokenPayload, User
+from app.models import Membership, Organization, TokenPayload, User
 
 reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_STR}/login/access-token"
@@ -55,3 +55,47 @@ def get_current_active_superuser(current_user: CurrentUser) -> User:
             status_code=403, detail="The user doesn't have enough privileges"
         )
     return current_user
+
+
+def get_active_org_id(token: TokenDep) -> str:
+    try:
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[security.ALGORITHM]
+        )
+        token_data = TokenPayload(**payload)
+    except (InvalidTokenError, ValidationError):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Could not validate credentials",
+        )
+    if not token_data.active_org_id:
+        raise HTTPException(status_code=400, detail="Active organization not set")
+    return token_data.active_org_id
+
+
+ActiveOrgId = Annotated[str, Depends(get_active_org_id)]
+
+
+def get_current_org(session: SessionDep, org_id: ActiveOrgId) -> Organization:
+    org = session.get(Organization, org_id)
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    return org
+
+
+CurrentOrg = Annotated[Organization, Depends(get_current_org)]
+
+
+def require_membership(
+    session: SessionDep, current_user: CurrentUser, org_id: ActiveOrgId
+) -> Membership:
+    statement = select(Membership).where(
+        Membership.user_id == current_user.id, Membership.org_id == org_id
+    )
+    membership = session.exec(statement).first()
+    if not membership:
+        raise HTTPException(status_code=403, detail="Not a member of this organization")
+    return membership
+
+
+CurrentMembership = Annotated[Membership, Depends(require_membership)]

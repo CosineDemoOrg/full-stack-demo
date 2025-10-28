@@ -8,6 +8,25 @@
 docker compose watch
 ```
 
+This will build and start:
+
+- Postgres
+- Backend (FastAPI)
+- Frontend (React)
+- Adminer, Traefik, etc.
+
+Apply DB migrations automatically at startup if you have your CI/CD wired to run Alembic, or run them manually:
+
+```bash
+docker compose exec backend uv run alembic upgrade head
+```
+
+Seed initial data (two orgs and users):
+
+```bash
+docker compose exec backend uv run python -m app.initial_data
+```
+
 * Now you can open your browser and interact with these URLs:
 
 Frontend, built with Docker, with routes handled based on the path: http://localhost:5173
@@ -33,6 +52,49 @@ To check the logs of a specific service, add the name of the service, e.g.:
 ```bash
 docker compose logs backend
 ```
+
+## Multi-tenant Orgs
+
+- Users can belong to multiple organizations via memberships (roles: admin, member).
+- Tokens include `active_org_id` claim; the navbar "Org" switcher mints a new token when you change orgs.
+- All item CRUD is scoped by the active org on the backend. Non-superusers can only manage their own items in the active org.
+- Admins can invite/remove members from the "Members" page.
+
+Useful endpoints:
+
+- GET /api/v1/orgs/ — list current user's orgs
+- POST /api/v1/orgs/ — create org (creator becomes admin)
+- POST /api/v1/orgs/{org_id}/switch — returns a new JWT with `active_org_id`
+- GET/POST/DELETE /api/v1/memberships — list/invite/remove membership in active org
+
+## Run Tests
+
+### Backend (Pytest)
+
+```bash
+cd backend
+uv run pytest
+```
+
+Covers:
+- Role checks (admin vs. member) for invites
+- Org scoping for items
+
+### Frontend (Playwright)
+
+Build and start the stack first, then run e2e:
+
+```bash
+docker compose watch  # in one terminal
+
+cd frontend
+npm ci
+npm run test:e2e
+```
+
+Included e2e:
+- Login flows
+- Invite member flow and org-scoped items
 
 ## Local Development
 
@@ -152,7 +214,6 @@ git commit
 Then you can `git add` the modified/fixed files again and now you can commit.
 
 #### Running pre-commit hooks manually
-
 you can also run `pre-commit` manually on all the files, you can do it using `uv` with:
 
 ```bash

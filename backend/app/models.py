@@ -39,6 +39,13 @@ class UpdatePassword(SQLModel):
     new_password: str = Field(min_length=8, max_length=40)
 
 
+# Standard error response model for API errors
+class ErrorResponse(SQLModel):
+    error: str
+    field: str | None = None
+    message: str
+
+
 # Database model, database table inferred from class name
 class User(UserBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)

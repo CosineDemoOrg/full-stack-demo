@@ -220,6 +220,38 @@ Backend docs: [backend/README.md](./backend/README.md).
 
 Frontend docs: [frontend/README.md](./frontend/README.md).
 
+## Notifications
+
+The template includes a simple notifications system for sending emails for common flows:
+
+- Welcome email (on user creation)
+- Password recovery
+
+It provides a provider interface with two implementations:
+
+- Console provider: logs notifications to the console (default for local development)
+- SMTP provider: sends real emails via SMTP using the configuration in `.env`
+
+To switch providers, set the environment variable in your `.env`:
+
+```
+NOTIFICATIONS_PROVIDER=console  # or "smtp"
+```
+
+SMTP configuration is controlled by:
+
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_TLS`
+- `SMTP_SSL`
+- `SMTP_USER`
+- `SMTP_PASSWORD`
+- `EMAILS_FROM_EMAIL`
+
+When using `NOTIFICATIONS_PROVIDER=smtp`, ensure `SMTP_HOST` and `EMAILS_FROM_EMAIL` are set. Otherwise, sending will be skipped with a structured warning log.
+
+The backend uses FastAPI `BackgroundTasks` to send notifications asynchronously. Frontend shows optimistic UI on password recovery (it immediately informs the user while the email is sent in the background).
+
 ## Deployment
 
 Deployment docs: [deployment.md](./deployment.md).

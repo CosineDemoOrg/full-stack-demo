@@ -97,6 +97,13 @@ class Message(SQLModel):
     message: str
 
 
+# Consistent error response model for OpenAPI documentation
+class ErrorResponse(SQLModel):
+    error: str  # e.g. "conflict"
+    field: str  # e.g. "email"
+    message: str  # e.g. "Already in use"
+
+
 # JSON payload containing access token
 class Token(SQLModel):
     access_token: str

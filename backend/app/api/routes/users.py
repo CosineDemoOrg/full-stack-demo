@@ -2,6 +2,7 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from sqlmodel import col, delete, func, select
 
 from app import crud
@@ -23,6 +24,7 @@ from app.models import (
     UsersPublic,
     UserUpdate,
     UserUpdateMe,
+    ErrorResponse,
 )
 from app.utils import generate_new_account_email, send_email
 
@@ -49,7 +51,10 @@ def read_users(session: SessionDep, skip: int = 0, limit: int = 100) -> Any:
 
 
 @router.post(
-    "/", dependencies=[Depends(get_current_active_superuser)], response_model=UserPublic
+    "/",
+    dependencies=[Depends(get_current_active_superuser)],
+    response_model=UserPublic,
+    responses={409: {"model": ErrorResponse, "description": "Conflict"}},
 )
 def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
     """
@@ -57,9 +62,9 @@ def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
     """
     user = crud.get_user_by_email(session=session, email=user_in.email)
     if user:
-        raise HTTPException(
-            status_code=400,
-            detail="The user with this email already exists in the system.",
+        return JSONResponse(
+            status_code=409,
+            content={"error": "conflict", "field": "email", "message": "Already in use"},
         )
 
     user = crud.create_user(session=session, user_create=user_in)
@@ -139,16 +144,20 @@ def delete_user_me(session: SessionDep, current_user: CurrentUser) -> Any:
     return Message(message="User deleted successfully")
 
 
-@router.post("/signup", response_model=UserPublic)
+@router.post(
+    "/signup",
+    response_model=UserPublic,
+    responses={409: {"model": ErrorResponse, "description": "Conflict"}},
+)
 def register_user(session: SessionDep, user_in: UserRegister) -> Any:
     """
     Create new user without the need to be logged in.
     """
     user = crud.get_user_by_email(session=session, email=user_in.email)
     if user:
-        raise HTTPException(
-            status_code=400,
-            detail="The user with this email already exists in the system",
+        return JSONResponse(
+            status_code=409,
+            content={"error": "conflict", "field": "email", "message": "Already in use"},
         )
     user_create = UserCreate.model_validate(user_in)
     user = crud.create_user(session=session, user_create=user_create)

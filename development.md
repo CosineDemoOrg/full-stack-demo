@@ -34,6 +34,21 @@ To check the logs of a specific service, add the name of the service, e.g.:
 docker compose logs backend
 ```
 
+### Database migrations and seed
+
+Run Alembic migrations and seed initial data (including multi-tenant orgs demo) with:
+
+```bash
+# inside the backend container
+docker compose exec backend bash -lc "alembic upgrade head && python -m app.initial_data"
+```
+
+This will:
+- Create Organization and Membership tables.
+- Add org_id to Items.
+- Seed two orgs (Org A, Org B) and demo users (alice@example.com, bob@example.com) with memberships.
+- Seed a few items scoped to each org.
+
 ## Local Development
 
 The Docker Compose files are configured so that each of the services is available in a different port in `localhost`.

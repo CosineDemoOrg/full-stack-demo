@@ -4,7 +4,15 @@ from typing import Any
 from sqlmodel import Session, select
 
 from app.core.security import get_password_hash, verify_password
-from app.models import Item, ItemCreate, User, UserCreate, UserUpdate
+from app.models import (
+    Item,
+    ItemCreate,
+    Membership,
+    Organization,
+    User,
+    UserCreate,
+    UserUpdate,
+)
 
 
 def create_user(*, session: Session, user_create: UserCreate) -> User:
@@ -14,6 +22,14 @@ def create_user(*, session: Session, user_create: UserCreate) -> User:
     session.add(db_obj)
     session.commit()
     session.refresh(db_obj)
+    # Create a default personal organization and membership as admin
+    org = Organization(name=f"{db_obj.email} Org")
+    session.add(org)
+    session.commit()
+    session.refresh(org)
+    membership = Membership(user_id=db_obj.id, org_id=org.id, role="admin")
+    session.add(membership)
+    session.commit()
     return db_obj
 
 
@@ -46,8 +62,8 @@ def authenticate(*, session: Session, email: str, password: str) -> User | None:
     return db_user
 
 
-def create_item(*, session: Session, item_in: ItemCreate, owner_id: uuid.UUID) -> Item:
-    db_item = Item.model_validate(item_in, update={"owner_id": owner_id})
+def create_item(*, session: Session, item_in: ItemCreate, owner_id: uuid.UUID, org_id: uuid.UUID) -> Item:
+    db_item = Item.model_validate(item_in, update={"owner_id": owner_id, "org_id": org_id})
     session.add(db_item)
     session.commit()
     session.refresh(db_item)

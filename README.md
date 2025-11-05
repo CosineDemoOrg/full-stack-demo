@@ -224,6 +224,39 @@ Frontend docs: [frontend/README.md](./frontend/README.md).
 
 Deployment docs: [deployment.md](./deployment.md).
 
+## Notifications
+
+The template includes a notifications system used for email flows (welcome, password recovery).
+
+- Providers:
+  - Console: logs to stdout, useful for local development.
+  - SMTP: sends real emails using SMTP credentials.
+
+### Configure
+
+- Set the provider in `.env`:
+  - `NOTIFICATIONS_PROVIDER=console` (default)
+  - `NOTIFICATIONS_PROVIDER=smtp` (requires SMTP variables below)
+- When using SMTP, set:
+  - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`
+  - `EMAILS_FROM_EMAIL`
+  - Optional: `SMTP_TLS` or `SMTP_SSL`.
+
+### How to switch providers
+
+1. Open `.env`.
+2. Set `NOTIFICATIONS_PROVIDER` to `console` or `smtp`.
+3. Restart the backend service.
+
+### Backend behavior
+
+- Notifications are sent using FastAPI `BackgroundTasks`, so API responses return immediately while the send runs in the background.
+- Errors while sending with SMTP are logged with structured fields and re-raised for visibility in logs.
+
+### Frontend behavior
+
+- The “Forgot password” screen uses optimistic UI. It immediately shows a success message and resets the form while the background task runs on the backend. If the request fails, an error toast is shown.
+
 ## Development
 
 General development docs: [development.md](./development.md).

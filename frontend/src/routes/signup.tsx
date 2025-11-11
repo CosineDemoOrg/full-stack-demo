@@ -4,16 +4,18 @@ import {
   Link as RouterLink,
   redirect,
 } from "@tanstack/react-router"
+import { useMutation } from "@tanstack/react-query"
 import { type SubmitHandler, useForm } from "react-hook-form"
 import { FiLock, FiUser } from "react-icons/fi"
 
-import type { UserRegister } from "@/client"
+import type { ApiError, UserRegister } from "@/client"
+import { UsersService } from "@/client"
 import { Button } from "@/components/ui/button"
 import { Field } from "@/components/ui/field"
 import { InputGroup } from "@/components/ui/input-group"
 import { PasswordInput } from "@/components/ui/password-input"
-import useAuth, { isLoggedIn } from "@/hooks/useAuth"
-import { confirmPasswordRules, emailPattern, passwordRules } from "@/utils"
+import { isLoggedIn } from "@/hooks/useAuth"
+import { confirmPasswordRules, emailPattern, passwordRules, handleError } from "@/utils"
 import Logo from "/assets/images/fastapi-logo.svg"
 
 export const Route = createFileRoute("/signup")({
@@ -32,12 +34,13 @@ interface UserRegisterForm extends UserRegister {
 }
 
 function SignUp() {
-  const { signUpMutation } = useAuth()
   const {
     register,
     handleSubmit,
     getValues,
     formState: { errors, isSubmitting },
+    setError,
+    clearErrors,
   } = useForm<UserRegisterForm>({
     mode: "onBlur",
     criteriaMode: "all",
@@ -49,7 +52,26 @@ function SignUp() {
     },
   })
 
+  const signUpMutation = useMutation({
+    mutationFn: (data: UserRegister) => UsersService.registerUser({ requestBody: data }),
+    onSuccess: () => {
+      // redirect to login
+      window.location.href = "/login"
+    },
+    onError: (err: ApiError) => {
+      if (err.status === 409) {
+        const body: any = err.body
+        if (body?.error === "conflict" && body?.field) {
+          setError(body.field as "email", { message: body.message || "Already in use" })
+          return
+        }
+      }
+      handleError(err)
+    },
+  })
+
   const onSubmit: SubmitHandler<UserRegisterForm> = (data) => {
+    clearErrors()
     signUpMutation.mutate(data)
   }
 

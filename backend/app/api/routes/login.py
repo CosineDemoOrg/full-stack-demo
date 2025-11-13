@@ -1,7 +1,7 @@
 from datetime import timedelta
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from fastapi.responses import HTMLResponse
 from fastapi.security import OAuth2PasswordRequestForm
 
@@ -11,10 +11,9 @@ from app.core import security
 from app.core.config import settings
 from app.core.security import get_password_hash
 from app.models import Message, NewPassword, Token, UserPublic
+from app.notifications import get_notification_service
 from app.utils import (
     generate_password_reset_token,
-    generate_reset_password_email,
-    send_email,
     verify_password_reset_token,
 )
 
@@ -52,7 +51,7 @@ def test_token(current_user: CurrentUser) -> Any:
 
 
 @router.post("/password-recovery/{email}")
-def recover_password(email: str, session: SessionDep) -> Message:
+def recover_password(email: str, session: SessionDep, background_tasks: BackgroundTasks) -> Message:
     """
     Password Recovery
     """
@@ -64,13 +63,12 @@ def recover_password(email: str, session: SessionDep) -> Message:
             detail="The user with this email does not exist in the system.",
         )
     password_reset_token = generate_password_reset_token(email=email)
-    email_data = generate_reset_password_email(
-        email_to=user.email, email=email, token=password_reset_token
-    )
-    send_email(
+    notifications = get_notification_service()
+    background_tasks.add_task(
+        notifications.send_password_recovery,
         email_to=user.email,
-        subject=email_data.subject,
-        html_content=email_data.html_content,
+        email=email,
+        token=password_reset_token,
     )
     return Message(message="Password recovery email sent")
 
@@ -115,10 +113,22 @@ def recover_password_html_content(email: str, session: SessionDep) -> Any:
             detail="The user with this username does not exist in the system.",
         )
     password_reset_token = generate_password_reset_token(email=email)
-    email_data = generate_reset_password_email(
-        email_to=user.email, email=email, token=password_reset_token
+    notifications = get_notification_service()
+    # Reuse the same rendering to return HTML content
+    from app.notifications.service import render_email_template
+    subject = f"{settings.PROJECT_NAME} - Password recovery for user {email}"
+    link = f"{settings.FRONTEND_HOST}/reset-password?token={password_reset_token}"
+    html_content = render_email_template(
+        template_name="reset_password.html",
+        context={
+            "project_name": settings.PROJECT_NAME,
+            "username": email,
+            "email": user.email,
+            "valid_hours": settings.EMAIL_RESET_TOKEN_EXPIRE_HOURS,
+            "link": link,
+        },
     )
 
     return HTMLResponse(
-        content=email_data.html_content, headers={"subject:": email_data.subject}
+        content=html_content, headers={"subject:": subject}
     )

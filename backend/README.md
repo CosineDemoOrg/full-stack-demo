@@ -170,3 +170,36 @@ The email templates are in `./backend/app/email-templates/`. Here, there are two
 Before continuing, ensure you have the [MJML extension](https://marketplace.visualstudio.com/items?itemName=attilabuti.vscode-mjml) installed in your VS Code.
 
 Once you have the MJML extension installed, you can create a new email template in the `src` directory. After creating the new email template and with the `.mjml` file open in your editor, open the command palette with `Ctrl+Shift+P` and search for `MJML: Export to HTML`. This will convert the `.mjml` file to a `.html` file and now you can save it in the build directory.
+
+## Notifications
+
+This project includes a notifications module that handles email flows (welcome, password recovery) with a pluggable provider interface.
+
+- Providers:
+  - Console provider (default): logs email metadata for local development.
+  - SMTP provider: sends real emails using SMTP settings.
+
+- Configuration:
+  - Set `NOTIFICATIONS_PROVIDER` in your `.env` or `.env.example`:
+    - `console` for local development.
+    - `smtp` for production or when you want to send real emails.
+
+- SMTP settings (used by the SMTP provider):
+  - `SMTP_HOST`, `SMTP_PORT`, `SMTP_TLS`/`SMTP_SSL`, `SMTP_USER`, `SMTP_PASSWORD`
+  - `EMAILS_FROM_EMAIL`, `EMAILS_FROM_NAME`
+
+- Usage:
+  - Email sends are scheduled with FastAPI `BackgroundTasks` to avoid blocking requests.
+  - See implementations under `app/notifications/`:
+    - `provider.py`: provider interface and implementations.
+    - `emails.py`: template rendering and email content builders.
+    - `service.py`: orchestration service that the API endpoints use.
+
+- Switching providers:
+  1. Update `NOTIFICATIONS_PROVIDER=console` (local) or `smtp` (real).
+  2. Ensure SMTP variables are set when using `smtp`.
+  3. Restart the backend.
+
+- Error handling and logging:
+  - SMTP provider wraps errors with context and logs structured metadata.
+  - Console provider logs metadata only; it doesn't send real emails.

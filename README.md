@@ -220,6 +220,44 @@ Backend docs: [backend/README.md](./backend/README.md).
 
 Frontend docs: [frontend/README.md](./frontend/README.md).
 
+## Notifications
+
+Email flows for welcome and password recovery are handled by a notifications subsystem with pluggable providers.
+
+- Providers:
+  - Console: logs the email payload (default for local dev)
+  - SMTP: sends via configured SMTP server
+- Backend:
+  - Uses FastAPI BackgroundTasks to send emails asynchronously without blocking the request.
+  - Configuration is managed via Pydantic Settings in `backend/app/core/config.py`.
+
+### Switching providers
+
+Set the provider in your `.env`:
+
+```
+NOTIFICATIONS_PROVIDER=console  # or smtp
+```
+
+For SMTP, also configure:
+
+```
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_TLS=true
+SMTP_SSL=false
+SMTP_USER=your_user
+SMTP_PASSWORD=your_password
+EMAILS_FROM_EMAIL=noreply@example.com
+EMAILS_FROM_NAME=MyApp
+```
+
+### Development notes
+
+- Password recovery initiates a background task and returns immediately.
+- The frontend shows an optimistic UI message on password recovery submission.
+- See backend notifications code under `backend/app/notifications/`.
+
 ## Deployment
 
 Deployment docs: [deployment.md](./deployment.md).

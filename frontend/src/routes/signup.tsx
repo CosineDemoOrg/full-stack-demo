@@ -37,6 +37,7 @@ function SignUp() {
     register,
     handleSubmit,
     getValues,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<UserRegisterForm>({
     mode: "onBlur",
@@ -50,7 +51,26 @@ function SignUp() {
   })
 
   const onSubmit: SubmitHandler<UserRegisterForm> = (data) => {
-    signUpMutation.mutate(data)
+    signUpMutation.mutate(data, {
+      onError: (err: any) => {
+        const status = err.status;
+        const body = err.body as any;
+        if (status === 409 && body && body.error === "conflict") {
+          const field: "email" | "username" = body.field;
+          const message: string = body.message || "Already in use";
+          const formField = field === "username" ? "full_name" : "email";
+          // Set inline error on the appropriate field
+          // react-hook-form setError API
+          // @ts-expect-error - dynamic key is fine
+          setError(formField, { type: "server", message });
+        } else {
+          // fallback to global toast
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          const { handleError } = require("@/utils");
+          handleError(err);
+        }
+      },
+    })
   }
 
   return (

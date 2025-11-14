@@ -4,6 +4,12 @@ from pydantic import EmailStr
 from sqlmodel import Field, Relationship, SQLModel
 
 
+class ConflictError(SQLModel):
+    error: str = "conflict"
+    field: str
+    message: str
+
+
 # Shared properties
 class UserBase(SQLModel):
     email: EmailStr = Field(unique=True, index=True, max_length=255)

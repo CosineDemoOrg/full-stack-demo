@@ -1,6 +1,6 @@
 import { expect, type Page, test } from "@playwright/test"
 
-import { randomEmail, randomPassword } from "./utils/random"
+import { randomEmail, randomPassword, randomString } from "./utils/random"
 
 test.use({ storageState: { cookies: [], origins: [] } })
 
@@ -11,11 +11,13 @@ type OptionsType = {
 const fillForm = async (
   page: Page,
   full_name: string,
+  username: string,
   email: string,
   password: string,
   confirm_password: string,
 ) => {
   await page.getByPlaceholder("Full Name").fill(full_name)
+  await page.getByPlaceholder("Username").fill(username)
   await page.getByPlaceholder("Email").fill(email)
   await page.getByPlaceholder("Password", { exact: true }).fill(password)
   await page.getByPlaceholder("Confirm Password").fill(confirm_password)
@@ -36,6 +38,7 @@ test("Inputs are visible, empty and editable", async ({ page }) => {
   await page.goto("/signup")
 
   await verifyInput(page, "Full Name")
+  await verifyInput(page, "Username")
   await verifyInput(page, "Email")
   await verifyInput(page, "Password", { exact: true })
   await verifyInput(page, "Confirm Password")
@@ -53,13 +56,14 @@ test("Log In link is visible", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Log In" })).toBeVisible()
 })
 
-test("Sign up with valid name, email, and password", async ({ page }) => {
+test("Sign up with valid name, username, email, and password", async ({ page }) => {
   const full_name = "Test User"
+  const username = randomString()
   const email = randomEmail()
   const password = randomPassword()
 
   await page.goto("/signup")
-  await fillForm(page, full_name, email, password, password)
+  await fillForm(page, full_name, username, email, password, password)
   await page.getByRole("button", { name: "Sign Up" }).click()
 })
 
@@ -69,6 +73,7 @@ test("Sign up with invalid email", async ({ page }) => {
   await fillForm(
     page,
     "Playwright Test",
+    randomString(),
     "invalid-email",
     "changethis",
     "changethis",
@@ -78,36 +83,35 @@ test("Sign up with invalid email", async ({ page }) => {
   await expect(page.getByText("Invalid email address")).toBeVisible()
 })
 
-test("Sign up with existing email", async ({ page }) => {
+test("Sign up with existing email shows inline error", async ({ page }) => {
   const fullName = "Test User"
+  const username1 = randomString()
   const email = randomEmail()
   const password = randomPassword()
 
   // Sign up with an email
   await page.goto("/signup")
-
-  await fillForm(page, fullName, email, password, password)
+  await fillForm(page, fullName, username1, email, password, password)
   await page.getByRole("button", { name: "Sign Up" }).click()
 
-  // Sign up again with the same email
+  // Sign up again with the same email but different username
+  const username2 = randomString()
   await page.goto("/signup")
-
-  await fillForm(page, fullName, email, password, password)
+  await fillForm(page, fullName, username2, email, password, password)
   await page.getByRole("button", { name: "Sign Up" }).click()
 
-  await page
-    .getByText("The user with this email already exists in the system")
-    .click()
+  await expect(page.getByText("Already in use")).toBeVisible()
 })
 
 test("Sign up with weak password", async ({ page }) => {
   const fullName = "Test User"
+  const username = randomString()
   const email = randomEmail()
   const password = "weak"
 
   await page.goto("/signup")
 
-  await fillForm(page, fullName, email, password, password)
+  await fillForm(page, fullName, username, email, password, password)
   await page.getByRole("button", { name: "Sign Up" }).click()
 
   await expect(
@@ -117,13 +121,14 @@ test("Sign up with weak password", async ({ page }) => {
 
 test("Sign up with mismatched passwords", async ({ page }) => {
   const fullName = "Test User"
+  const username = randomString()
   const email = randomEmail()
   const password = randomPassword()
   const password2 = randomPassword()
 
   await page.goto("/signup")
 
-  await fillForm(page, fullName, email, password, password2)
+  await fillForm(page, fullName, username, email, password, password2)
   await page.getByRole("button", { name: "Sign Up" }).click()
 
   await expect(page.getByText("Passwords do not match")).toBeVisible()
@@ -131,12 +136,13 @@ test("Sign up with mismatched passwords", async ({ page }) => {
 
 test("Sign up with missing full name", async ({ page }) => {
   const fullName = ""
+  const username = randomString()
   const email = randomEmail()
   const password = randomPassword()
 
   await page.goto("/signup")
 
-  await fillForm(page, fullName, email, password, password)
+  await fillForm(page, fullName, username, email, password, password)
   await page.getByRole("button", { name: "Sign Up" }).click()
 
   await expect(page.getByText("Full Name is required")).toBeVisible()
@@ -144,12 +150,13 @@ test("Sign up with missing full name", async ({ page }) => {
 
 test("Sign up with missing email", async ({ page }) => {
   const fullName = "Test User"
+  const username = randomString()
   const email = ""
   const password = randomPassword()
 
   await page.goto("/signup")
 
-  await fillForm(page, fullName, email, password, password)
+  await fillForm(page, fullName, username, email, password, password)
   await page.getByRole("button", { name: "Sign Up" }).click()
 
   await expect(page.getByText("Email is required")).toBeVisible()
@@ -157,12 +164,13 @@ test("Sign up with missing email", async ({ page }) => {
 
 test("Sign up with missing password", async ({ page }) => {
   const fullName = ""
+  const username = randomString()
   const email = randomEmail()
   const password = ""
 
   await page.goto("/signup")
 
-  await fillForm(page, fullName, email, password, password)
+  await fillForm(page, fullName, username, email, password, password)
   await page.getByRole("button", { name: "Sign Up" }).click()
 
   await expect(page.getByText("Password is required")).toBeVisible()

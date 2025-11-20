@@ -6,6 +6,8 @@ export const randomTeamName = () =>
 
 export const randomPassword = () => `${Math.random().toString(36).substring(2)}`
 
+export const randomString = () => Math.random().toString(36).substring(7)
+
 export const slugify = (text: string) =>
   text
     .toLowerCase()

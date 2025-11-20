@@ -7,13 +7,14 @@ import {
 import { type SubmitHandler, useForm } from "react-hook-form"
 import { FiLock, FiUser } from "react-icons/fi"
 
-import type { UserRegister } from "@/client"
+import type { ApiError, UserRegister } from "@/client"
+import { UsersService } from "@/client"
 import { Button } from "@/components/ui/button"
 import { Field } from "@/components/ui/field"
 import { InputGroup } from "@/components/ui/input-group"
 import { PasswordInput } from "@/components/ui/password-input"
-import useAuth, { isLoggedIn } from "@/hooks/useAuth"
-import { confirmPasswordRules, emailPattern, passwordRules } from "@/utils"
+import { isLoggedIn } from "@/hooks/useAuth"
+import { confirmPasswordRules, emailPattern, handleError, passwordRules } from "@/utils"
 import Logo from "/assets/images/fastapi-logo.svg"
 
 export const Route = createFileRoute("/signup")({
@@ -29,28 +30,44 @@ export const Route = createFileRoute("/signup")({
 
 interface UserRegisterForm extends UserRegister {
   confirm_password: string
+  username: string
 }
 
 function SignUp() {
-  const { signUpMutation } = useAuth()
   const {
     register,
     handleSubmit,
     getValues,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<UserRegisterForm>({
     mode: "onBlur",
     criteriaMode: "all",
     defaultValues: {
       email: "",
+      username: "",
       full_name: "",
       password: "",
       confirm_password: "",
     },
   })
 
-  const onSubmit: SubmitHandler<UserRegisterForm> = (data) => {
-    signUpMutation.mutate(data)
+  const onSubmit: SubmitHandler<UserRegisterForm> = async (data) => {
+    try {
+      await UsersService.registerUser({ requestBody: data as any })
+    } catch (err) {
+      const apiErr = err as ApiError
+      if (apiErr.status === 409) {
+        const body = apiErr.body as any
+        const field = body?.field as "email" | "username" | undefined
+        const message = body?.message || "Already in use"
+        if (field) {
+          setError(field, { message })
+          return
+        }
+      }
+      handleError(apiErr)
+    }
   }
 
   return (
@@ -84,6 +101,19 @@ function SignUp() {
                 required: "Full Name is required",
               })}
               placeholder="Full Name"
+              type="text"
+            />
+          </InputGroup>
+        </Field>
+
+        <Field invalid={!!errors.username} errorText={errors.username?.message}>
+          <InputGroup w="100%" startElement={<FiUser />}>
+            <Input
+              {...register("username", {
+                required: "Username is required",
+                minLength: { value: 3, message: "Username must be at least 3 characters" },
+              })}
+              placeholder="Username"
               type="text"
             />
           </InputGroup>

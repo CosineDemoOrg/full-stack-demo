@@ -216,6 +216,36 @@ The input variables, with their default values (some auto generated) are:
 
 Backend docs: [backend/README.md](./backend/README.md).
 
+## Notifications
+
+The project includes a notifications system for sending emails such as:
+
+- Welcome emails when an admin creates a new user.
+- Password recovery emails.
+
+Email sending is implemented through providers under `backend/app/notifications/` with a simple interface. The available providers are:
+
+- `console`: logs the email payload instead of sending it (useful for local development).
+- `smtp`: sends real emails using the configured SMTP server.
+
+You can choose the provider via the environment variable in `.env`:
+
+```env
+NOTIFICATIONS_EMAIL_PROVIDER=console  # or "smtp"
+```
+
+When using the `smtp` provider, make sure to configure:
+
+```env
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=your-user
+SMTP_PASSWORD=your-password
+EMAILS_FROM_EMAIL=noreply@example.com
+```
+
+On the backend, password recovery and welcome emails are sent using FastAPI `BackgroundTasks`, so the API responses return immediately while the email is sent in the background.
+
 ## Frontend Development
 
 Frontend docs: [frontend/README.md](./frontend/README.md).

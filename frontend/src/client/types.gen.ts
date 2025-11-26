@@ -23,6 +23,7 @@ export type ItemPublic = {
     description?: (string | null);
     id: string;
     owner_id: string;
+    org_id: string;
 };
 
 export type ItemsPublic = {

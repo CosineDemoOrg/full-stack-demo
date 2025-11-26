@@ -26,7 +26,9 @@ def login_access_token(
     session: SessionDep, form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
 ) -> Token:
     """
-    OAuth2 compatible token login, get an access token for future requests
+    OAuth2 compatible token login, get an access token for future requests.
+    The token will include the first organization the user is a member of
+    as the active organization, if any.
     """
     user = crud.authenticate(
         session=session, email=form_data.username, password=form_data.password
@@ -35,10 +37,23 @@ def login_access_token(
         raise HTTPException(status_code=400, detail="Incorrect email or password")
     elif not user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
+
+    # Determine default active organization (first membership, if any)
+    from sqlmodel import select  # imported here to avoid circular imports
+
+    from app.models import Membership
+
+    membership = session.exec(
+        select(Membership).where(Membership.user_id == user.id)
+    ).first()
+    active_org_id: str | None = None
+    if membership:
+        active_org_id = str(membership.org_id)
+
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     return Token(
         access_token=security.create_access_token(
-            user.id, expires_delta=access_token_expires
+            user.id, expires_delta=access_token_expires, active_org_id=active_org_id
         )
     )
 

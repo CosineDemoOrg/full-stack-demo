@@ -216,6 +216,37 @@ The input variables, with their default values (some auto generated) are:
 
 Backend docs: [backend/README.md](./backend/README.md).
 
+## Notifications
+
+Email notifications (welcome email on user creation and password recovery) are routed
+through a configurable notification provider.
+
+The provider is selected via the `NOTIFICATION_PROVIDER` environment variable:
+
+- `console` (default): emails are not sent, but logged as structured log entries.
+- `smtp`: emails are sent using the SMTP configuration (`SMTP_*`, `EMAILS_FROM_EMAIL`,
+  `EMAILS_FROM_NAME`).
+
+Example configuration in `.env`:
+
+```env
+NOTIFICATION_PROVIDER=smtp
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_TLS=True
+SMTP_SSL=False
+SMTP_USER=your-smtp-user
+SMTP_PASSWORD=your-smtp-password
+EMAILS_FROM_EMAIL=info@example.com
+EMAILS_FROM_NAME="My Project"
+```
+
+When using `smtp`, make sure:
+
+- `SMTP_HOST` and `EMAILS_FROM_EMAIL` are set, otherwise email sending will fail.
+- The rest of your SMTP settings (`SMTP_PORT`, `SMTP_TLS` / `SMTP_SSL`, etc.) match
+  your provider.
+
 ## Frontend Development
 
 Frontend docs: [frontend/README.md](./frontend/README.md).

@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from pydantic.networks import EmailStr
 
-from app.api.deps import get_current_active_superuser
+from app.api.deps import NotificationProviderDep, get_current_active_superuser
 from app.models import Message
-from app.utils import generate_test_email, send_email
+from app.notifications import send_test_email
 
 router = APIRouter(prefix="/utils", tags=["utils"])
 
@@ -13,15 +13,18 @@ router = APIRouter(prefix="/utils", tags=["utils"])
     dependencies=[Depends(get_current_active_superuser)],
     status_code=201,
 )
-def test_email(email_to: EmailStr) -> Message:
+def test_email(
+    email_to: EmailStr,
+    background_tasks: BackgroundTasks,
+    notification_provider: NotificationProviderDep,
+) -> Message:
     """
     Test emails.
     """
-    email_data = generate_test_email(email_to=email_to)
-    send_email(
+    background_tasks.add_task(
+        send_test_email,
         email_to=email_to,
-        subject=email_data.subject,
-        html_content=email_data.html_content,
+        provider=notification_provider,
     )
     return Message(message="Test email sent")
 

@@ -46,10 +46,21 @@ export const confirmPasswordRules = (
 
 export const handleError = (err: ApiError) => {
   const { showErrorToast } = useCustomToast()
-  const errDetail = (err.body as any)?.detail
+  const body = err.body as any
+  const errDetail = body?.detail
   let errorMessage = errDetail || "Something went wrong."
+
   if (Array.isArray(errDetail) && errDetail.length > 0) {
     errorMessage = errDetail[0].msg
+  } else if (
+    !errDetail &&
+    body &&
+    typeof body === "object" &&
+    body.error === "conflict" &&
+    typeof body.message === "string"
+  ) {
+    errorMessage = body.message
   }
+
   showErrorToast(errorMessage)
 }

@@ -2,7 +2,7 @@ from sqlmodel import Session, create_engine, select
 
 from app import crud
 from app.core.config import settings
-from app.models import User, UserCreate
+from app.models import Membership, MembershipRole, Organization, User, UserCreate
 
 engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI))
 
@@ -31,3 +31,19 @@ def init_db(session: Session) -> None:
             is_superuser=True,
         )
         user = crud.create_user(session=session, user_create=user_in)
+
+    org_count = session.exec(select(Organization)).first()
+    if not org_count:
+        org1 = Organization(name="Demo Org 1")
+        org2 = Organization(name="Demo Org 2")
+        session.add(org1)
+        session.add(org2)
+        session.commit()
+        session.refresh(org1)
+        session.refresh(org2)
+
+        membership = Membership(
+            user_id=user.id, org_id=org1.id, role=MembershipRole.ADMIN
+        )
+        session.add(membership)
+        session.commit()

@@ -60,6 +60,7 @@ const useAuth = () => {
 
   const logout = () => {
     localStorage.removeItem("access_token")
+    localStorage.removeItem("active_org_id")
     navigate({ to: "/login" })
   }
 

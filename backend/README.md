@@ -170,3 +170,55 @@ The email templates are in `./backend/app/email-templates/`. Here, there are two
 Before continuing, ensure you have the [MJML extension](https://marketplace.visualstudio.com/items?itemName=attilabuti.vscode-mjml) installed in your VS Code.
 
 Once you have the MJML extension installed, you can create a new email template in the `src` directory. After creating the new email template and with the `.mjml` file open in your editor, open the command palette with `Ctrl+Shift+P` and search for `MJML: Export to HTML`. This will convert the `.mjml` file to a `.html` file and now you can save it in the build directory.
+
+## Notifications
+
+Welcome and password recovery emails are handled through the `app.notifications` package.
+
+### Providers
+
+Notifications use a provider interface so that different backends can be used transparently:
+
+* `ConsoleNotificationProvider` – logs outgoing emails instead of sending them.
+* `SMTPNotificationProvider` – sends real emails via SMTP using the configuration in `Settings`.
+
+The active provider is selected using the `NOTIFICATIONS_PROVIDER` setting, which is configured from the top-level `.env` file:
+
+```env
+# Log emails instead of sending them
+NOTIFICATIONS_PROVIDER=console
+
+# Or send real emails via SMTP
+# NOTIFICATIONS_PROVIDER=smtp
+```
+
+When `NOTIFICATIONS_PROVIDER=smtp`, the following variables must also be set:
+
+```env
+SMTP_HOST=smtp.example.com
+SMTP_USER=your-user
+SMTP_PASSWORD=your-password
+EMAILS_FROM_EMAIL=info@example.com
+SMTP_TLS=True
+SMTP_SSL=False
+SMTP_PORT=587
+```
+
+### Flows
+
+Two main email flows are implemented:
+
+* **Welcome email** – sent asynchronously when a new user is created via the `/users/` endpoint.
+* **Password recovery** – sent asynchronously when a user requests password recovery via `/password-recovery/{email}`.
+
+Both flows use FastAPI `BackgroundTasks` so the HTTP response is returned immediately while the email is sent in the background.
+
+### Switching providers
+
+To switch providers:
+
+1. Edit the top-level `.env` file.
+2. Set `NOTIFICATIONS_PROVIDER` to either `console` or `smtp`.
+3. Restart the backend so the new configuration is loaded.
+
+Unit tests for the notification providers are located under `backend/tests/notifications/`.

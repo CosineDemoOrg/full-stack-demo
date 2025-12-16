@@ -1,16 +1,11 @@
 from collections.abc import Generator
-from typing import Annotated
 
-import jwt
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
-from jwt.exceptions import InvalidTokenError
-from pydantic import ValidationError
+from fastapi import Depends
 from sqlmodel import Session
 
-from app.core import security
-from app.core.config import settings
 from app.core.db import engine
+from app.notifications import get_notification_provider
+from app.notifications.service import NotificationService
 from app.models import TokenPayload, User
 
 reusable_oauth2 = OAuth2PasswordBearer(
@@ -23,7 +18,10 @@ def get_db() -> Generator[Session, None, None]:
         yield session
 
 
-SessionDep = Annotated[Session, Depends(get_db)]
+SessionDep = Annotated[Session, Depends(get_session)]
+NotificationsDep = Annotated[
+    NotificationService, Depends(lambda: NotificationService(get_notification_provider()))
+]= Annotated[Session, Depends(get_db)]
 TokenDep = Annotated[str, Depends(reusable_oauth2)]
 
 

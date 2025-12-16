@@ -37,6 +37,7 @@ function SignUp() {
     register,
     handleSubmit,
     getValues,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<UserRegisterForm>({
     mode: "onBlur",
@@ -50,7 +51,18 @@ function SignUp() {
   })
 
   const onSubmit: SubmitHandler<UserRegisterForm> = (data) => {
-    signUpMutation.mutate(data)
+    signUpMutation.mutate(data, {
+      onError: (error: any) => {
+        const status = error?.status
+        const detail = (error?.body as any)?.detail
+        if (status === 409 && detail?.error === "conflict" && detail?.field) {
+          setError(detail.field as keyof UserRegisterForm, {
+            type: "server",
+            message: detail.message ?? "Already in use",
+          })
+        }
+      },
+    })
   }
 
   return (

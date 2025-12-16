@@ -1,10 +1,12 @@
 import uuid
 from typing import Any
 
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from app.core.security import get_password_hash, verify_password
 from app.models import Item, ItemCreate, User, UserCreate, UserUpdate
+from fastapi import HTTPException
 
 
 def create_user(*, session: Session, user_create: UserCreate) -> User:
@@ -12,7 +14,15 @@ def create_user(*, session: Session, user_create: UserCreate) -> User:
         user_create, update={"hashed_password": get_password_hash(user_create.password)}
     )
     session.add(db_obj)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        # Fallback in case of a race condition violating the unique constraint.
+        raise HTTPException(
+            status_code=409,
+            detail={"error": "conflict", "field": "email", "message": "Already in use"},
+        )
     session.refresh(db_obj)
     return db_obj
 

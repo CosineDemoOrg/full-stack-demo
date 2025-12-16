@@ -13,6 +13,7 @@ from app.api.deps import (
 from app.core.config import settings
 from app.core.security import get_password_hash, verify_password
 from app.models import (
+    ConflictError,
     Item,
     Message,
     UpdatePassword,
@@ -49,7 +50,10 @@ def read_users(session: SessionDep, skip: int = 0, limit: int = 100) -> Any:
 
 
 @router.post(
-    "/", dependencies=[Depends(get_current_active_superuser)], response_model=UserPublic
+    "/",
+    dependencies=[Depends(get_current_active_superuser)],
+    response_model=UserPublic,
+    responses={409: {"model": ConflictError}},
 )
 def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
     """
@@ -58,8 +62,8 @@ def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
     user = crud.get_user_by_email(session=session, email=user_in.email)
     if user:
         raise HTTPException(
-            status_code=400,
-            detail="The user with this email already exists in the system.",
+            status_code=409,
+            detail={"error": "conflict", "field": "email", "message": "Already in use"},
         )
 
     user = crud.create_user(session=session, user_create=user_in)
@@ -75,7 +79,11 @@ def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
     return user
 
 
-@router.patch("/me", response_model=UserPublic)
+@router.patch(
+    "/me",
+    response_model=UserPublic,
+    responses={409: {"model": ConflictError}},
+)
 def update_user_me(
     *, session: SessionDep, user_in: UserUpdateMe, current_user: CurrentUser
 ) -> Any:
@@ -87,7 +95,12 @@ def update_user_me(
         existing_user = crud.get_user_by_email(session=session, email=user_in.email)
         if existing_user and existing_user.id != current_user.id:
             raise HTTPException(
-                status_code=409, detail="User with this email already exists"
+                status_code=409,
+                detail={
+                    "error": "conflict",
+                    "field": "email",
+                    "message": "Already in use",
+                },
             )
     user_data = user_in.model_dump(exclude_unset=True)
     current_user.sqlmodel_update(user_data)
@@ -139,7 +152,11 @@ def delete_user_me(session: SessionDep, current_user: CurrentUser) -> Any:
     return Message(message="User deleted successfully")
 
 
-@router.post("/signup", response_model=UserPublic)
+@router.post(
+    "/signup",
+    response_model=UserPublic,
+    responses={409: {"model": ConflictError}},
+)
 def register_user(session: SessionDep, user_in: UserRegister) -> Any:
     """
     Create new user without the need to be logged in.
@@ -147,8 +164,8 @@ def register_user(session: SessionDep, user_in: UserRegister) -> Any:
     user = crud.get_user_by_email(session=session, email=user_in.email)
     if user:
         raise HTTPException(
-            status_code=400,
-            detail="The user with this email already exists in the system",
+            status_code=409,
+            detail={"error": "conflict", "field": "email", "message": "Already in use"},
         )
     user_create = UserCreate.model_validate(user_in)
     user = crud.create_user(session=session, user_create=user_create)
@@ -177,6 +194,7 @@ def read_user_by_id(
     "/{user_id}",
     dependencies=[Depends(get_current_active_superuser)],
     response_model=UserPublic,
+    responses={409: {"model": ConflictError}},
 )
 def update_user(
     *,
@@ -198,7 +216,12 @@ def update_user(
         existing_user = crud.get_user_by_email(session=session, email=user_in.email)
         if existing_user and existing_user.id != user_id:
             raise HTTPException(
-                status_code=409, detail="User with this email already exists"
+                status_code=409,
+                detail={
+                    "error": "conflict",
+                    "field": "email",
+                    "message": "Already in use",
+                },
             )
 
     db_user = crud.update_user(session=session, db_user=db_user, user_in=user_in)

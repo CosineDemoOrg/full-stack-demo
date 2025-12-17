@@ -216,6 +216,40 @@ The input variables, with their default values (some auto generated) are:
 
 Backend docs: [backend/README.md](./backend/README.md).
 
+## Notifications
+
+The backend supports pluggable notification providers for outbound emails, such as
+welcome messages and password recovery links.
+
+By default, the template uses a **console provider** that logs emails instead of
+sending them. This makes local development safe and simple.
+
+To configure notifications:
+
+- Choose a provider via the `NOTIFICATIONS_PROVIDER` environment variable:
+  - `console` – log emails only (default).
+  - `smtp` – send real emails using your SMTP configuration.
+- When using `smtp`, configure:
+  - `SMTP_HOST`
+  - `SMTP_PORT`
+  - `SMTP_USER`
+  - `SMTP_PASSWORD`
+  - `EMAILS_FROM_EMAIL`
+
+For example, in your `.env`:
+
+```bash
+NOTIFICATIONS_PROVIDER=smtp
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=my-smtp-user
+SMTP_PASSWORD=super-secret
+EMAILS_FROM_EMAIL=no-reply@example.com
+```
+
+With this configuration, password recovery and welcome emails will be sent through
+SMTP in a FastAPI `BackgroundTasks`, while the frontend shows an optimistic UI.
+
 ## Frontend Development
 
 Frontend docs: [frontend/README.md](./frontend/README.md).

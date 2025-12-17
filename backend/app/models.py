@@ -92,6 +92,12 @@ class ItemsPublic(SQLModel):
     count: int
 
 
+class ErrorResponse(SQLModel):
+    error: str
+    field: str | None = None
+    message: str
+
+
 # Generic message
 class Message(SQLModel):
     message: str

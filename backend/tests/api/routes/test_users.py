@@ -128,8 +128,12 @@ def test_create_user_existing_username(
         json=data,
     )
     created_user = r.json()
-    assert r.status_code == 400
-    assert "_id" not in created_user
+    assert r.status_code == 409
+    assert created_user == {
+        "error": "conflict",
+        "field": "email",
+        "message": "Already in use",
+    }
 
 
 def test_create_user_by_normal_user(
@@ -260,7 +264,11 @@ def test_update_user_me_email_exists(
         json=data,
     )
     assert r.status_code == 409
-    assert r.json()["detail"] == "User with this email already exists"
+    assert r.json() == {
+        "error": "conflict",
+        "field": "email",
+        "message": "Already in use",
+    }
 
 
 def test_update_password_me_same_password_error(
@@ -316,8 +324,12 @@ def test_register_user_already_exists_error(client: TestClient) -> None:
         f"{settings.API_V1_STR}/users/signup",
         json=data,
     )
-    assert r.status_code == 400
-    assert r.json()["detail"] == "The user with this email already exists in the system"
+    assert r.status_code == 409
+    assert r.json() == {
+        "error": "conflict",
+        "field": "email",
+        "message": "Already in use",
+    }
 
 
 def test_update_user(
@@ -379,7 +391,11 @@ def test_update_user_email_exists(
         json=data,
     )
     assert r.status_code == 409
-    assert r.json()["detail"] == "User with this email already exists"
+    assert r.json() == {
+        "error": "conflict",
+        "field": "email",
+        "message": "Already in use",
+    }
 
 
 def test_delete_user_me(client: TestClient, db: Session) -> None:

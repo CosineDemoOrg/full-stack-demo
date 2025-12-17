@@ -224,6 +224,25 @@ Frontend docs: [frontend/README.md](./frontend/README.md).
 
 Deployment docs: [deployment.md](./deployment.md).
 
+## Notifications
+
+The backend email flows (welcome emails, password recovery, test emails) are implemented using a pluggable **notifications provider**.
+
+By default, the project uses the `console` provider in development, which simply logs emails to the console. For production you would normally switch to the `smtp` provider.
+
+Configure the provider in your top-level `.env`:
+
+```env
+# Notifications
+# Can be "console" or "smtp"
+NOTIFICATIONS_PROVIDER=console
+```
+
+- `console`: emails are printed to stdout and logged with structured logging.
+- `smtp`: emails are sent using the SMTP configuration (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAILS_FROM_EMAIL`, `SMTP_TLS`, `SMTP_SSL`).
+
+When `NOTIFICATIONS_PROVIDER=smtp`, make sure your SMTP settings are valid; otherwise emails will be skipped and a warning will be logged.
+
 ## Development
 
 General development docs: [development.md](./development.md).

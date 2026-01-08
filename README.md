@@ -212,6 +212,32 @@ The input variables, with their default values (some auto generated) are:
 - `postgres_password`: (default: `"changethis"`) The password for the PostgreSQL database, stored in .env, you can generate one with the method above.
 - `sentry_dsn`: (default: "") The DSN for Sentry, if you are using it, you can set it later in .env.
 
+### Notifications Provider
+
+Email notifications (welcome emails, password reset, test emails) are sent through a simple notifications service with a pluggable provider.
+
+You can control which provider is used via the `NOTIFICATIONS_PROVIDER` environment variable:
+
+- `console` (default): log email notifications to the backend logs (no real email is sent).
+- `smtp`: send real emails using the configured SMTP settings (`SMTP_HOST`, `SMTP_USER`, etc.).
+
+To switch to SMTP in your `.env`:
+
+```env
+NOTIFICATIONS_PROVIDER=smtp
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=your-user
+SMTP_PASSWORD=your-password
+EMAILS_FROM_EMAIL=info@example.com
+```
+
+To use console logging instead of sending real emails:
+
+```env
+NOTIFICATIONS_PROVIDER=console
+```
+
 ## Backend Development
 
 Backend docs: [backend/README.md](./backend/README.md).

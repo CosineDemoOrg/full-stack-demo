@@ -2,6 +2,8 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import col, delete, func, select
 
 from app import crud
@@ -13,6 +15,7 @@ from app.api.deps import (
 from app.core.config import settings
 from app.core.security import get_password_hash, verify_password
 from app.models import (
+    ErrorResponse,
     Item,
     Message,
     UpdatePassword,
@@ -27,6 +30,13 @@ from app.models import (
 from app.utils import generate_new_account_email, send_email
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+def conflict_response(field: str, message: str = "Already in use") -> JSONResponse:
+    return JSONResponse(
+        status_code=409,
+        content={"error": "conflict", "field": field, "message": message},
+    )
 
 
 @router.get(
@@ -49,7 +59,10 @@ def read_users(session: SessionDep, skip: int = 0, limit: int = 100) -> Any:
 
 
 @router.post(
-    "/", dependencies=[Depends(get_current_active_superuser)], response_model=UserPublic
+    "/",
+    dependencies=[Depends(get_current_active_superuser)],
+    response_model=UserPublic,
+    responses={409: {"model": ErrorResponse, "description": "Email already in use"}},
 )
 def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
     """
@@ -57,12 +70,14 @@ def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
     """
     user = crud.get_user_by_email(session=session, email=user_in.email)
     if user:
-        raise HTTPException(
-            status_code=400,
-            detail="The user with this email already exists in the system.",
-        )
+        return conflict_response(field="email")
 
-    user = crud.create_user(session=session, user_create=user_in)
+    try:
+        user = crud.create_user(session=session, user_create=user_in)
+    except IntegrityError:
+        session.rollback()
+        return conflict_response(field="email")
+
     if settings.emails_enabled and user_in.email:
         email_data = generate_new_account_email(
             email_to=user_in.email, username=user_in.email, password=user_in.password
@@ -75,7 +90,11 @@ def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
     return user
 
 
-@router.patch("/me", response_model=UserPublic)
+@router.patch(
+    "/me",
+    response_model=UserPublic,
+    responses={409: {"model": ErrorResponse, "description": "Email already in use"}},
+)
 def update_user_me(
     *, session: SessionDep, user_in: UserUpdateMe, current_user: CurrentUser
 ) -> Any:
@@ -86,9 +105,7 @@ def update_user_me(
     if user_in.email:
         existing_user = crud.get_user_by_email(session=session, email=user_in.email)
         if existing_user and existing_user.id != current_user.id:
-            raise HTTPException(
-                status_code=409, detail="User with this email already exists"
-            )
+            return conflict_response(field="email")
     user_data = user_in.model_dump(exclude_unset=True)
     current_user.sqlmodel_update(user_data)
     session.add(current_user)
@@ -139,19 +156,24 @@ def delete_user_me(session: SessionDep, current_user: CurrentUser) -> Any:
     return Message(message="User deleted successfully")
 
 
-@router.post("/signup", response_model=UserPublic)
+@router.post(
+    "/signup",
+    response_model=UserPublic,
+    responses={409: {"model": ErrorResponse, "description": "Email already in use"}},
+)
 def register_user(session: SessionDep, user_in: UserRegister) -> Any:
     """
     Create new user without the need to be logged in.
     """
     user = crud.get_user_by_email(session=session, email=user_in.email)
     if user:
-        raise HTTPException(
-            status_code=400,
-            detail="The user with this email already exists in the system",
-        )
+        return conflict_response(field="email")
     user_create = UserCreate.model_validate(user_in)
-    user = crud.create_user(session=session, user_create=user_create)
+    try:
+        user = crud.create_user(session=session, user_create=user_create)
+    except IntegrityError:
+        session.rollback()
+        return conflict_response(field="email")
     return user
 
 
@@ -177,6 +199,7 @@ def read_user_by_id(
     "/{user_id}",
     dependencies=[Depends(get_current_active_superuser)],
     response_model=UserPublic,
+    responses={409: {"model": ErrorResponse, "description": "Email already in use"}},
 )
 def update_user(
     *,
@@ -197,9 +220,7 @@ def update_user(
     if user_in.email:
         existing_user = crud.get_user_by_email(session=session, email=user_in.email)
         if existing_user and existing_user.id != user_id:
-            raise HTTPException(
-                status_code=409, detail="User with this email already exists"
-            )
+            return conflict_response(field="email")
 
     db_user = crud.update_user(session=session, db_user=db_user, user_in=user_in)
     return db_user

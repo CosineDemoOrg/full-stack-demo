@@ -1,4 +1,5 @@
 import {
+  Button,
   Container,
   EmptyState,
   Flex,
@@ -136,9 +137,17 @@ function ItemsTable() {
 function Items() {
   return (
     <Container maxW="full">
-      <Heading size="lg" pt={12}>
-        Items Management
-      </Heading>
+      <Flex pt={12} justifyContent="space-between" alignItems="center">
+        <Heading size="lg">Items Management</Heading>
+        <Button
+          as="a"
+          href="/api/v1/items/export"
+          variant="outline"
+          size="sm"
+        >
+          Export CSV
+        </Button>
+      </Flex>
       <AddItem />
       <ItemsTable />
     </Container>

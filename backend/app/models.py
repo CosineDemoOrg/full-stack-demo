@@ -1,5 +1,9 @@
 import uuid
 
+import datetime
+
+
+
 from pydantic import EmailStr
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -79,6 +83,9 @@ class Item(ItemBase, table=True):
         foreign_key="user.id", nullable=False, ondelete="CASCADE"
     )
     owner: User | None = Relationship(back_populates="items")
+    created_at: datetime.datetime = Field(
+        default_factory=datetime.datetime.utcnow, nullable=False
+    )
 
 
 # Properties to return via API, id is always required

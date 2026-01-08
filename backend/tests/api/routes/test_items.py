@@ -1,3 +1,5 @@
+import csv
+import io
 import uuid
 
 from fastapi.testclient import TestClient
@@ -77,6 +79,44 @@ def test_read_items(
     assert response.status_code == 200
     content = response.json()
     assert len(content["data"]) >= 2
+
+
+def test_export_items_csv(
+    client: TestClient, superuser_token_headers: dict[str, str], db: Session
+) -> None:
+    # Ensure there are some items in the database
+    create_random_item(db)
+    create_random_item(db)
+
+    # Get the items via the standard API
+    list_response = client.get(
+        f"{settings.API_V1_STR}/items/",
+        headers=superuser_token_headers,
+    )
+    assert list_response.status_code == 200
+    list_content = list_response.json()
+    items = list_content["data"]
+
+    # Export items as CSV
+    response = client.get(
+        f"{settings.API_V1_STR}/items/export",
+        headers=superuser_token_headers,
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/csv")
+
+    csv_text = response.text.strip()
+    csv_file = io.StringIO(csv_text)
+    reader = csv.reader(csv_file)
+    rows = list(reader)
+
+    # Header row + one row per item
+    assert rows[0] == ["id", "name", "created_at"]
+    assert len(rows) == len(items) + 1
+
+    csv_ids = {row[0] for row in rows[1:]}
+    item_ids = {item["id"] for item in items}
+    assert csv_ids == item_ids
 
 
 def test_update_item(

@@ -1,7 +1,10 @@
+import csv
+import io
 import uuid
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import PlainTextResponse
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
@@ -39,6 +42,46 @@ def read_items(
         items = session.exec(statement).all()
 
     return ItemsPublic(data=items, count=count)
+
+
+@router.get("/export", response_class=PlainTextResponse)
+def export_items(
+    session: SessionDep, current_user: CurrentUser, search: str | None = None
+) -> Any:
+    """
+    Export items as CSV.
+
+    The CSV has the header: id,name,created_at
+    and respects the same permissions as the regular items list.
+    """
+
+    if current_user.is_superuser:
+        statement = select(Item)
+    else:
+        statement = select(Item).where(Item.owner_id == current_user.id)
+
+    if search:
+        like_term = f"%{search}%"
+        statement = statement.where(
+            (Item.title.ilike(like_term)) | (Item.description.ilike(like_term))
+        )
+
+    items = session.exec(statement).all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["id", "name", "created_at"])
+
+    for item in items:
+        writer.writerow(
+            [
+                str(item.id),
+                item.title,
+                item.created_at.isoformat() if hasattr(item, "created_at") else "",
+            ]
+        )
+
+    return PlainTextResponse(content=output.getvalue(), media_type="text/csv")
 
 
 @router.get("/{id}", response_model=ItemPublic)

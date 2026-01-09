@@ -32,7 +32,7 @@ function RecoverPassword() {
     register,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<FormData>()
   const { showSuccessToast } = useCustomToast()
 
@@ -86,7 +86,12 @@ function RecoverPassword() {
           />
         </InputGroup>
       </Field>
-      <Button variant="solid" type="submit" loading={isSubmitting}>
+      <Button
+        variant="solid"
+        type="submit"
+        loading={mutation.isPending}
+        loadingText="Sending email..."
+      >
         Continue
       </Button>
     </Container>

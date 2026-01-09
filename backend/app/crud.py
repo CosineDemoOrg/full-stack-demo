@@ -4,7 +4,16 @@ from typing import Any
 from sqlmodel import Session, select
 
 from app.core.security import get_password_hash, verify_password
-from app.models import Item, ItemCreate, User, UserCreate, UserUpdate
+from app.models import (
+    Item,
+    ItemCreate,
+    Membership,
+    Organization,
+    OrganizationRole,
+    User,
+    UserCreate,
+    UserUpdate,
+)
 
 
 def create_user(*, session: Session, user_create: UserCreate) -> User:
@@ -46,9 +55,46 @@ def authenticate(*, session: Session, email: str, password: str) -> User | None:
     return db_user
 
 
-def create_item(*, session: Session, item_in: ItemCreate, owner_id: uuid.UUID) -> Item:
-    db_item = Item.model_validate(item_in, update={"owner_id": owner_id})
+def create_item(
+    *,
+    session: Session,
+    item_in: ItemCreate,
+    owner_id: uuid.UUID,
+    org_id: uuid.UUID,
+) -> Item:
+    db_item = Item.model_validate(
+        item_in, update={"owner_id": owner_id, "org_id": org_id}
+    )
     session.add(db_item)
     session.commit()
     session.refresh(db_item)
     return db_item
+
+
+def create_organization(
+    *, session: Session, owner_id: uuid.UUID, name: str
+) -> Organization:
+    organization = Organization(name=name, owner_id=owner_id)
+    session.add(organization)
+    session.commit()
+    session.refresh(organization)
+
+    membership = Membership(
+        user_id=owner_id, org_id=organization.id, role=OrganizationRole.ADMIN
+    )
+    session.add(membership)
+    session.commit()
+
+    return organization
+
+
+def get_default_active_org_id(*, session: Session, user_id: uuid.UUID) -> uuid.UUID | None:
+    statement = (
+        select(Membership)
+        .where(Membership.user_id == user_id)
+        .order_by(Membership.role == OrganizationRole.ADMIN)
+    )
+    membership = session.exec(statement).first()
+    if membership:
+        return membership.org_id
+    return None

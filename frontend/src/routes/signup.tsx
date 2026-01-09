@@ -7,13 +7,13 @@ import {
 import { type SubmitHandler, useForm } from "react-hook-form"
 import { FiLock, FiUser } from "react-icons/fi"
 
-import type { UserRegister } from "@/client"
+import type { ApiError, UserRegister } from "@/client"
 import { Button } from "@/components/ui/button"
 import { Field } from "@/components/ui/field"
 import { InputGroup } from "@/components/ui/input-group"
 import { PasswordInput } from "@/components/ui/password-input"
 import useAuth, { isLoggedIn } from "@/hooks/useAuth"
-import { confirmPasswordRules, emailPattern, passwordRules } from "@/utils"
+import { confirmPasswordRules, emailPattern, handleError, passwordRules } from "@/utils"
 import Logo from "/assets/images/fastapi-logo.svg"
 
 export const Route = createFileRoute("/signup")({
@@ -37,8 +37,8 @@ function SignUp() {
     register,
     handleSubmit,
     getValues,
-    formState: { errors, isSubmitting },
-  } = useForm<UserRegisterForm>({
+    setError,
+    formState: { errors, isSubmittingorm<UserRegisterForm>({
     mode: "onBlur",
     criteriaMode: "all",
     defaultValues: {
@@ -50,7 +50,26 @@ function SignUp() {
   })
 
   const onSubmit: SubmitHandler<UserRegisterForm> = (data) => {
-    signUpMutation.mutate(data)
+    signUpMutation.mutate(data, {
+      onError: (err: ApiError) => {
+        const body = err.body as any
+        if (
+          err.status === 409 &&
+          body &&
+          typeof body === "object" &&
+          body.error === "conflict" &&
+          typeof body.field === "string" &&
+          typeof body.message === "string"
+        ) {
+          setError(body.field as keyof UserRegisterForm, {
+            type: "server",
+            message: body.message,
+          })
+        } else {
+          handleError(err)
+        }
+      },
+    })
   }
 
   return (

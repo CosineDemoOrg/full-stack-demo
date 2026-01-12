@@ -3,17 +3,20 @@ import {
   createFileRoute,
   Link as RouterLink,
   redirect,
+  useNavigate,
 } from "@tanstack/react-router"
+import { useMutation } from "@tanstack/react-query"
 import { type SubmitHandler, useForm } from "react-hook-form"
 import { FiLock, FiUser } from "react-icons/fi"
 
-import type { UserRegister } from "@/client"
+import type { ApiError, UserRegister } from "@/client"
+import { UsersService } from "@/client"
 import { Button } from "@/components/ui/button"
 import { Field } from "@/components/ui/field"
 import { InputGroup } from "@/components/ui/input-group"
 import { PasswordInput } from "@/components/ui/password-input"
-import useAuth, { isLoggedIn } from "@/hooks/useAuth"
-import { confirmPasswordRules, emailPattern, passwordRules } from "@/utils"
+import { isLoggedIn } from "@/hooks/useAuth"
+import { confirmPasswordRules, emailPattern, handleError, passwordRules } from "@/utils"
 import Logo from "/assets/images/fastapi-logo.svg"
 
 export const Route = createFileRoute("/signup")({
@@ -32,11 +35,12 @@ interface UserRegisterForm extends UserRegister {
 }
 
 function SignUp() {
-  const { signUpMutation } = useAuth()
+  const navigate = useNavigate()
   const {
     register,
     handleSubmit,
     getValues,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<UserRegisterForm>({
     mode: "onBlur",
@@ -46,6 +50,27 @@ function SignUp() {
       full_name: "",
       password: "",
       confirm_password: "",
+    },
+  })
+
+  const signUpMutation = useMutation({
+    mutationFn: (data: UserRegister) =>
+      UsersService.registerUser({ requestBody: data }),
+    onSuccess: () => {
+      navigate({ to: "/login" })
+    },
+    onError: (err: ApiError) => {
+      const body = err.body as any
+      if (err.status === 409 && body?.error === "conflict") {
+        if (body.field === "email") {
+          setError("email", {
+            type: "server",
+            message: "The user with this email already exists in the system",
+          })
+          return
+        }
+      }
+      handleError(err)
     },
   })
 

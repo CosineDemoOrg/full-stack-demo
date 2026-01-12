@@ -170,3 +170,49 @@ The email templates are in `./backend/app/email-templates/`. Here, there are two
 Before continuing, ensure you have the [MJML extension](https://marketplace.visualstudio.com/items?itemName=attilabuti.vscode-mjml) installed in your VS Code.
 
 Once you have the MJML extension installed, you can create a new email template in the `src` directory. After creating the new email template and with the `.mjml` file open in your editor, open the command palette with `Ctrl+Shift+P` and search for `MJML: Export to HTML`. This will convert the `.mjml` file to a `.html` file and now you can save it in the build directory.
+
+## Notifications
+
+Email notifications (welcome, password recovery and test emails) are handled via the `app.notifications` package.
+
+### Providers
+
+Notifications use a provider interface so you can switch how emails are sent without changing application code.
+
+There are two built-in providers:
+
+- `console`: logs email subject and content, useful for local development.
+- `smtp`: sends real emails using the SMTP configuration from the environment.
+
+The provider is selected with the `NOTIFICATIONS_PROVIDER` environment variable (see `.env`):
+
+- `NOTIFICATIONS_PROVIDER=console` – default for local development, no SMTP required.
+- `NOTIFICATIONS_PROVIDER=smtp` – use SMTP to send real emails.
+
+### Configuration
+
+The following settings in `.env` are used:
+
+```env
+NOTIFICATIONS_PROVIDER=console  # or smtp
+
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_TLS=True
+SMTP_SSL=False
+SMTP_USER=
+SMTP_PASSWORD=
+EMAILS_FROM_EMAIL=info@example.com
+```
+
+When using the `smtp` provider, make sure `SMTP_HOST` and `EMAILS_FROM_EMAIL` are set; otherwise, emails will effectively be disabled.
+
+### Flows
+
+The main notification flows are:
+
+- Welcome email on user creation (admin API).
+- Password recovery email.
+- Test email endpoint for verifying configuration.
+
+All email sending is scheduled using FastAPI `BackgroundTasks`, so the API responses return quickly while the email is sent in the background.

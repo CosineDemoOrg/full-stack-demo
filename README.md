@@ -216,6 +216,47 @@ The input variables, with their default values (some auto generated) are:
 
 Backend docs: [backend/README.md](./backend/README.md).
 
+### Notifications
+
+The backend sends emails for:
+
+- Welcome emails when an admin creates a user.
+- Password recovery emails when a user requests a reset link.
+
+These flows are implemented in `app/notifications` and use a pluggable provider:
+
+- `console`: logs the email content to the console (useful for local development).
+- `smtp`: sends real emails using the SMTP configuration.
+
+The provider is configured via environment variables, using Pydantic settings:
+
+- `NOTIFICATIONS_PROVIDER` – one of `console` or `smtp`.
+- Standard SMTP settings: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`,
+  `SMTP_TLS`, `SMTP_SSL`, `EMAILS_FROM_EMAIL`.
+
+Example local configuration (in `.env`):
+
+```env
+# Emails / notifications
+SMTP_HOST=
+SMTP_USER=
+SMTP_PASSWORD=
+EMAILS_FROM_EMAIL=info@example.com
+SMTP_TLS=True
+SMTP_SSL=False
+SMTP_PORT=587
+# Notification provider: "console" logs emails instead of sending, useful for local dev
+NOTIFICATIONS_PROVIDER=console
+```
+
+To switch providers:
+
+1. Set `NOTIFICATIONS_PROVIDER` in `.env`:
+   - `NOTIFICATIONS_PROVIDER=console` to log emails.
+   - `NOTIFICATIONS_PROVIDER=smtp` to send real emails via SMTP.
+2. Ensure your SMTP settings are correct when using `smtp`.
+3. Restart the backend so the new settings are loaded.
+
 ## Frontend Development
 
 Frontend docs: [frontend/README.md](./frontend/README.md).

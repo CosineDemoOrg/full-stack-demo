@@ -216,6 +216,50 @@ The input variables, with their default values (some auto generated) are:
 
 Backend docs: [backend/README.md](./backend/README.md).
 
+## Notifications
+
+The backend exposes a notification layer used for email flows such as:
+
+- Welcome emails when a new user is created by an admin.
+- Password recovery emails triggered from the "Forgot password" screen.
+- Test emails from the `/utils/test-email/` endpoint.
+
+### Providers
+
+Notifications are sent through a pluggable provider interface:
+
+- `console`: logs email payloads to the backend logs. Useful for local development.
+- `smtp`: sends real emails using the configured SMTP server.
+
+The active provider is selected via the `EMAIL_PROVIDER` environment variable (see `.env`):
+
+- `EMAIL_PROVIDER=console` – log-only provider (default in this template).
+- `EMAIL_PROVIDER=smtp` – real SMTP delivery (requires SMTP_* settings).
+
+When using the SMTP provider, the existing settings are used:
+
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USER`
+- `SMTP_PASSWORD`
+- `SMTP_TLS`
+- `SMTP_SSL`
+- `EMAILS_FROM_EMAIL`
+- `EMAILS_FROM_NAME`
+
+### Switching providers
+
+To switch providers:
+
+1. Open `.env`.
+2. Set `EMAIL_PROVIDER` to one of:
+   - `console`
+   - `smtp`
+3. For `smtp`, also configure the SMTP-related variables above.
+4. Restart the backend so the new settings are loaded.
+
+The FastAPI application uses background tasks to send emails asynchronously, so API responses for flows like password recovery return immediately while the email is sent in the background.
+
 ## Frontend Development
 
 Frontend docs: [frontend/README.md](./frontend/README.md).

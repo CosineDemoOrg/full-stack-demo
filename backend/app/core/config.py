@@ -77,6 +77,9 @@ class Settings(BaseSettings):
     EMAILS_FROM_EMAIL: EmailStr | None = None
     EMAILS_FROM_NAME: EmailStr | None = None
 
+    # Notifications
+    NOTIFICATIONS_EMAIL_PROVIDER: Literal["console", "smtp"] = "console"
+
     @model_validator(mode="after")
     def _set_default_emails_from(self) -> Self:
         if not self.EMAILS_FROM_NAME:

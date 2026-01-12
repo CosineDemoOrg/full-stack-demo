@@ -2,6 +2,7 @@ import { Flex, Image, useBreakpointValue } from "@chakra-ui/react"
 import { Link } from "@tanstack/react-router"
 
 import Logo from "/assets/images/fastapi-logo.svg"
+import OrgSwitcher from "./OrgSwitcher"
 import UserMenu from "./UserMenu"
 
 function Navbar() {
@@ -23,6 +24,7 @@ function Navbar() {
         <Image src={Logo} alt="Logo" maxW="3xs" p={2} />
       </Link>
       <Flex gap={2} alignItems="center">
+        <OrgSwitcher />
         <UserMenu />
       </Flex>
     </Flex>

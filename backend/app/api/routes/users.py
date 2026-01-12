@@ -87,7 +87,8 @@ def update_user_me(
         existing_user = crud.get_user_by_email(session=session, email=user_in.email)
         if existing_user and existing_user.id != current_user.id:
             raise HTTPException(
-                status_code=409, detail="User with this email already exists"
+                status_code=409,
+                detail={"error": "conflict", "field": "email"},
             )
     user_data = user_in.model_dump(exclude_unset=True)
     current_user.sqlmodel_update(user_data)
@@ -147,8 +148,8 @@ def register_user(session: SessionDep, user_in: UserRegister) -> Any:
     user = crud.get_user_by_email(session=session, email=user_in.email)
     if user:
         raise HTTPException(
-            status_code=400,
-            detail="The user with this email already exists in the system",
+            status_code=409,
+            detail={"error": "conflict", "field": "email"},
         )
     user_create = UserCreate.model_validate(user_in)
     user = crud.create_user(session=session, user_create=user_create)
@@ -198,7 +199,8 @@ def update_user(
         existing_user = crud.get_user_by_email(session=session, email=user_in.email)
         if existing_user and existing_user.id != user_id:
             raise HTTPException(
-                status_code=409, detail="User with this email already exists"
+                status_code=409,
+                detail={"error": "conflict", "field": "email"},
             )
 
     db_user = crud.update_user(session=session, db_user=db_user, user_in=user_in)

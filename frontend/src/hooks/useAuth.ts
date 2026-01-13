@@ -33,9 +33,6 @@ const useAuth = () => {
     onSuccess: () => {
       navigate({ to: "/login" })
     },
-    onError: (err: ApiError) => {
-      handleError(err)
-    },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] })
     },

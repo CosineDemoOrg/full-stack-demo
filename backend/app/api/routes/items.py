@@ -1,7 +1,10 @@
+import csv
+import io
 import uuid
-from typing import Any
+from typing import Any, Iterable
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import PlainTextResponse
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
@@ -10,9 +13,25 @@ from app.models import Item, ItemCreate, ItemPublic, ItemsPublic, ItemUpdate, Me
 router = APIRouter(prefix="/items", tags=["items"])
 
 
+def _iter_items_for_user(
+    session: SessionDep, current_user: CurrentUser, *, search: str | None = None
+) -> Iterable[Item]:
+    if current_user.is_superuser:
+        statement = select(Item)
+    else:
+        statement = select(Item).where(Item.owner_id == current_user.id)
+    if search:
+        statement = statement.where(Item.title.contains(search))
+    return session.exec(statement)
+
+
 @router.get("/", response_model=ItemsPublic)
 def read_items(
-    session: SessionDep, current_user: CurrentUser, skip: int = 0, limit: int = 100
+    session: SessionDep,
+    current_user: CurrentUser,
+    skip: int = 0,
+    limit: int = 100,
+    search: str | None = None,
 ) -> Any:
     """
     Retrieve items.
@@ -20,23 +39,23 @@ def read_items(
 
     if current_user.is_superuser:
         count_statement = select(func.count()).select_from(Item)
-        count = session.exec(count_statement).one()
-        statement = select(Item).offset(skip).limit(limit)
-        items = session.exec(statement).all()
     else:
         count_statement = (
             select(func.count())
             .select_from(Item)
             .where(Item.owner_id == current_user.id)
         )
-        count = session.exec(count_statement).one()
-        statement = (
-            select(Item)
-            .where(Item.owner_id == current_user.id)
-            .offset(skip)
-            .limit(limit)
-        )
-        items = session.exec(statement).all()
+    if search:
+        count_statement = count_statement.where(Item.title.contains(search))
+    count = session.exec(count_statement).one()
+
+    statement = select(Item)
+    if not current_user.is_superuser:
+        statement = statement.where(Item.owner_id == current_user.id)
+    if search:
+        statement = statement.where(Item.title.contains(search))
+    statement = statement.offset(skip).limit(limit)
+    items = session.exec(statement).all()
 
     return ItemsPublic(data=items, count=count)
 
@@ -107,3 +126,39 @@ def delete_item(
     session.delete(item)
     session.commit()
     return Message(message="Item deleted successfully")
+
+
+@router.get(
+    "/export",
+    response_class=PlainTextResponse,
+)
+def export_items(
+    session: SessionDep,
+    current_user: CurrentUser,
+    skip: int = 0,
+    limit: int = 100,
+    search: str | None = None,
+) -> PlainTextResponse:
+    """
+    Export items as CSV.
+    """
+    statement = select(Item)
+    if not current_user.is_superuser:
+        statement = statement.where(Item.owner_id == current_user.id)
+    if search:
+        statement = statement.where(Item.title.contains(search))
+    statement = statement.offset(skip).limit(limit)
+    items = session.exec(statement).all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["id", "name", "created_at"])
+    for item in items:
+        writer.writerow([str(item.id), getattr(item, "title", ""), ""])
+
+    csv_content = output.getvalue()
+    headers = {
+        "Content-Disposition": 'attachment; filename="items.csv"',
+        "Content-Type": "text/csv; charset=utf-8",
+    }
+    return PlainTextResponse(content=csv_content, headers=headers)

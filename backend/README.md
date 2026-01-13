@@ -163,6 +163,28 @@ $ alembic upgrade head
 
 If you don't want to start with the default models and want to remove them / modify them, from the beginning, without having any previous revision, you can remove the revision files (`.py` Python files) under `./backend/app/alembic/versions/`. And then create a first migration as described above.
 
+## Email Notifications
+
+Email notifications (welcome emails, password recovery, and test emails) are sent through a simple notifications service with pluggable providers.
+
+By default, the backend uses the SMTP provider and the existing SMTP configuration:
+
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USER`
+- `SMTP_PASSWORD`
+- `SMTP_TLS`
+- `SMTP_SSL`
+- `EMAILS_FROM_EMAIL`
+- `EMAILS_FROM_NAME`
+
+The notifications provider is configured via the `NOTIFICATIONS_PROVIDER` environment variable:
+
+- `NOTIFICATIONS_PROVIDER=smtp` (default) – send real emails via SMTP (requires the SMTP settings above).
+- `NOTIFICATIONS_PROVIDER=console` – do not send real emails; log notifications to the backend logs instead (useful for local development without SMTP).
+
+Welcome emails and password reset emails continue to behave the same from the frontend point of view; only the backend sending mechanism changes.
+
 ## Email Templates
 
 The email templates are in `./backend/app/email-templates/`. Here, there are two directories: `build` and `src`. The `src` directory contains the source files that are used to build the final email templates. The `build` directory contains the final email templates that are used by the application.

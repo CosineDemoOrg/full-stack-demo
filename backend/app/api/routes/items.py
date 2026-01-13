@@ -1,7 +1,9 @@
+import csv
+import io
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
@@ -12,7 +14,11 @@ router = APIRouter(prefix="/items", tags=["items"])
 
 @router.get("/", response_model=ItemsPublic)
 def read_items(
-    session: SessionDep, current_user: CurrentUser, skip: int = 0, limit: int = 100
+    session: SessionDep,
+    current_user: CurrentUser,
+    skip: int = 0,
+    limit: int = 100,
+    search: str | None = None,
 ) -> Any:
     """
     Retrieve items.
@@ -20,8 +26,13 @@ def read_items(
 
     if current_user.is_superuser:
         count_statement = select(func.count()).select_from(Item)
+        if search:
+            count_statement = count_statement.where(Item.title.contains(search))
         count = session.exec(count_statement).one()
-        statement = select(Item).offset(skip).limit(limit)
+        statement = select(Item)
+        if search:
+            statement = statement.where(Item.title.contains(search))
+        statement = statement.offset(skip).limit(limit)
         items = session.exec(statement).all()
     else:
         count_statement = (
@@ -29,16 +40,54 @@ def read_items(
             .select_from(Item)
             .where(Item.owner_id == current_user.id)
         )
+        if search:
+            count_statement = count_statement.where(Item.title.contains(search))
         count = session.exec(count_statement).one()
-        statement = (
-            select(Item)
-            .where(Item.owner_id == current_user.id)
-            .offset(skip)
-            .limit(limit)
-        )
+        statement = select(Item).where(Item.owner_id == current_user.id)
+        if search:
+            statement = statement.where(Item.title.contains(search))
+        statement = statement.offset(skip).limit(limit)
         items = session.exec(statement).all()
 
     return ItemsPublic(data=items, count=count)
+
+
+@router.get("/export")
+def export_items(
+    session: SessionDep,
+    current_user: CurrentUser,
+    skip: int = 0,
+    limit: int = 100,
+    search: str | None = None,
+) -> Response:
+    """
+    Export items as CSV.
+    """
+
+    if current_user.is_superuser:
+        statement = select(Item)
+        if search:
+            statement = statement.where(Item.title.contains(search))
+        statement = statement.offset(skip).limit(limit)
+        items = session.exec(statement).all()
+    else:
+        statement = select(Item).where(Item.owner_id == current_user.id)
+        if search:
+            statement = statement.where(Item.title.contains(search))
+        statement = statement.offset(skip).limit(limit)
+        items = session.exec(statement).all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["id", "name", "created_at"])
+    for item in items:
+        writer.writerow([item.id, item.title, ""])
+
+    csv_content = output.getvalue()
+    headers = {
+        "Content-Disposition": "attachment; filename=items.csv",
+    }
+    return Response(content=csv_content, media_type="text/csv", headers=headers)
 
 
 @router.get("/{id}", response_model=ItemPublic)

@@ -8,12 +8,13 @@ import {
 } from "@chakra-ui/react"
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { FiSearch } from "react-icons/fi"
+import { FiDownload, FiSearch } from "react-icons/fi"
 import { z } from "zod"
 
-import { ItemsService } from "@/client"
+import { ItemsService, OpenAPI } from "@/client"
 import { ItemActionsMenu } from "@/components/Common/ItemActionsMenu"
 import AddItem from "@/components/Items/AddItem"
+import { Button } from "@/components/ui/button"
 import PendingItems from "@/components/Pending/PendingItems"
 import {
   PaginationItems,
@@ -24,6 +25,7 @@ import {
 
 const itemsSearchSchema = z.object({
   page: z.number().catch(1),
+  search: z.string().optional().catch(""),
 })
 
 const PER_PAGE = 5
@@ -43,12 +45,40 @@ export const Route = createFileRoute("/_layout/items")({
 
 function ItemsTable() {
   const navigate = useNavigate({ from: Route.fullPath })
-  const { page } = Route.useSearch()
+  const { page, search } = Route.useSearch()
 
   const { data, isLoading, isPlaceholderData } = useQuery({
     ...getItemsQueryOptions({ page }),
     placeholderData: (prevData) => prevData,
   })
+
+  const handleExport = async () => {
+    const params = new URLSearchParams()
+    params.set("skip", String((page - 1) * PER_PAGE))
+    params.set("limit", String(PER_PAGE))
+    if (search) {
+      params.set("search", search)
+    }
+
+    const baseUrl = OpenAPI.BASE ?? ""
+    const response = await fetch(
+      `${baseUrl}/api/v1/items/export?${params.toString()}`,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
+        },
+      },
+    )
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = "items.csv"
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  }
 
   const setPage = (page: number) => {
     navigate({
@@ -66,24 +96,46 @@ function ItemsTable() {
 
   if (items.length === 0) {
     return (
-      <EmptyState.Root>
-        <EmptyState.Content>
-          <EmptyState.Indicator>
-            <FiSearch />
-          </EmptyState.Indicator>
-          <VStack textAlign="center">
-            <EmptyState.Title>You don't have any items yet</EmptyState.Title>
-            <EmptyState.Description>
-              Add a new item to get started
-            </EmptyState.Description>
-          </VStack>
-        </EmptyState.Content>
-      </EmptyState.Root>
+      <>
+        <Flex justifyContent="flex-end" my={4}>
+          <Button
+            onClick={handleExport}
+            leftIcon={<FiDownload />}
+            variant="outline"
+            size="sm"
+          >
+            Export CSV
+          </Button>
+        </Flex>
+        <EmptyState.Root>
+          <EmptyState.Content>
+            <EmptyState.Indicator>
+              <FiSearch />
+            </EmptyState.Indicator>
+            <VStack textAlign="center">
+              <EmptyState.Title>You don't have any items yet</EmptyState.Title>
+              <EmptyState.Description>
+                Add a new item to get started
+              </EmptyState.Description>
+            </VStack>
+          </EmptyState.Content>
+        </EmptyState.Root>
+      </>
     )
   }
 
   return (
     <>
+      <Flex justifyContent="flex-end" my={4}>
+        <Button
+          onClick={handleExport}
+          leftIcon={<FiDownload />}
+          variant="outline"
+          size="sm"
+        >
+          Export CSV
+        </Button>
+      </Flex>
       <Table.Root size={{ base: "sm", md: "md" }}>
         <Table.Header>
           <Table.Row>

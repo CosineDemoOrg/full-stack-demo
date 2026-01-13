@@ -3,7 +3,8 @@ from pydantic.networks import EmailStr
 
 from app.api.deps import get_current_active_superuser
 from app.models import Message
-from app.utils import generate_test_email, send_email
+from app.notifications import Notification, get_notification_provider
+from app.utils import generate_test_email
 
 router = APIRouter(prefix="/utils", tags=["utils"])
 
@@ -18,11 +19,13 @@ def test_email(email_to: EmailStr) -> Message:
     Test emails.
     """
     email_data = generate_test_email(email_to=email_to)
-    send_email(
+    notification = Notification(
         email_to=email_to,
         subject=email_data.subject,
         html_content=email_data.html_content,
     )
+    provider = get_notification_provider()
+    provider.send(notification)
     return Message(message="Test email sent")
 
 

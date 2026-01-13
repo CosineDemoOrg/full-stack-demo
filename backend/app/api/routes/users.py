@@ -2,6 +2,7 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import col, delete, func, select
 
 from app import crud
@@ -58,11 +59,18 @@ def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
     user = crud.get_user_by_email(session=session, email=user_in.email)
     if user:
         raise HTTPException(
-            status_code=400,
-            detail="The user with this email already exists in the system.",
+            status_code=409,
+            content={"error": "conflict", "field": "email"},
         )
 
-    user = crud.create_user(session=session, user_create=user_in)
+    try:
+        user = crud.create_user(session=session, user_create=user_in)
+    except IntegrityError as exc:
+        raise HTTPException(
+            status_code=409,
+            content={"error": "conflict", "field": "email"},
+        ) from exc
+
     if settings.emails_enabled and user_in.email:
         email_data = generate_new_account_email(
             email_to=user_in.email, username=user_in.email, password=user_in.password
@@ -147,11 +155,19 @@ def register_user(session: SessionDep, user_in: UserRegister) -> Any:
     user = crud.get_user_by_email(session=session, email=user_in.email)
     if user:
         raise HTTPException(
-            status_code=400,
-            detail="The user with this email already exists in the system",
+            status_code=409,
+            content={"error": "conflict", "field": "email"},
         )
     user_create = UserCreate.model_validate(user_in)
-    user = crud.create_user(session=session, user_create=user_create)
+
+    try:
+        user = crud.create_user(session=session, user_create=user_create)
+    except IntegrityError as exc:
+        raise HTTPException(
+            status_code=409,
+            content={"error": "conflict", "field": "email"},
+        ) from exc
+
     return user
 
 

@@ -1,9 +1,9 @@
 from fastapi.testclient import TestClient
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app import crud
 from app.core.config import settings
-from app.models import User, UserCreate, UserUpdate
+from app.models import User, UserCreate, UserUpdate, Organization, Membership
 from tests.utils.utils import random_email, random_lower_string
 
 
@@ -18,14 +18,12 @@ def user_authentication_headers(
     headers = {"Authorization": f"Bearer {auth_token}"}
     return headers
 
-
 def create_random_user(db: Session) -> User:
     email = random_email()
     password = random_lower_string()
     user_in = UserCreate(email=email, password=password)
     user = crud.create_user(session=db, user_create=user_in)
     return user
-
 
 def authentication_token_from_email(
     *, client: TestClient, email: str, db: Session
@@ -45,5 +43,19 @@ def authentication_token_from_email(
         if not user.id:
             raise Exception("User id not set")
         user = crud.update_user(session=db, db_user=user, user_in=user_in_update)
+
+    # Ensure user has a membership so JWT includes active_org_id
+    org = db.exec(select(Organization).where(Organization.name == "Test Org")).first()
+    if not org:
+        org = Organization(name="Test Org")
+        db.add(org)
+        db.commit()
+        db.refresh(org)
+    mem = db.exec(
+        select(Membership).where(Membership.user_id == user.id, Membership.org_id == org.id)
+    ).first()
+    if not mem:
+        db.add(Membership(user_id=user.id, org_id=org.id, role="admin"))
+        db.commit()
 
     return user_authentication_headers(client=client, email=email, password=password)

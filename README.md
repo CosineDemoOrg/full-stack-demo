@@ -230,6 +230,23 @@ General development docs: [development.md](./development.md).
 
 This includes using Docker Compose, custom local domains, `.env` configurations, etc.
 
+## Multi-tenant Organizations
+
+This repository now includes multi-tenant organization support:
+
+- Database: `organization`, `membership` (user_id, org_id, role), and `item` includes `org_id`.
+- Backend: CRUD for organizations and memberships; endpoints to switch active org; RBAC enforced so only org admins can invite/remove members; all reads/writes scoped by `org_id`.
+- Auth: JWT includes `active_org_id` claim and is verified on each request.
+- Frontend: Org switcher in the navbar; org members page; items list/detail filtered by active org.
+- Ops: Alembic migration and a seed script creating two orgs plus users.
+- Tests: Pytest covering role checks; Playwright E2E for invite → accept → list items.
+
+To run locally with Docker Compose:
+
+1. `docker compose up -d`
+2. Backend migrations and initial data run automatically.
+3. Open the frontend at `http://localhost:5173`.
+
 ## Release Notes
 
 Check the file [release-notes.md](./release-notes.md).

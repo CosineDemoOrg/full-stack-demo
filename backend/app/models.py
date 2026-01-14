@@ -44,6 +44,9 @@ class User(UserBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     hashed_password: str
     items: list["Item"] = Relationship(back_populates="owner", cascade_delete=True)
+    memberships: list["Membership"] = Relationship(
+        back_populates="user", cascade_delete=True
+    )
 
 
 # Properties to return via API, id is always required
@@ -53,6 +56,77 @@ class UserPublic(UserBase):
 
 class UsersPublic(SQLModel):
     data: list[UserPublic]
+    count: int
+
+
+# Organization models
+class OrganizationBase(SQLModel):
+    name: str = Field(min_length=1, max_length=255, unique=True, index=True)
+
+
+class OrganizationCreate(OrganizationBase):
+    pass
+
+
+class OrganizationUpdate(OrganizationBase):
+    name: str | None = Field(default=None, min_length=1, max_length=255)  # type: ignore
+
+
+class Organization(OrganizationBase, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    memberships: list["Membership"] = Relationship(
+        back_populates="organization", cascade_delete=True
+    )
+
+
+class OrganizationPublic(OrganizationBase):
+    id: uuid.UUID
+
+
+class OrganizationsPublic(SQLModel):
+    data: list[OrganizationPublic]
+    count: int
+
+
+# Membership models and RBAC
+class MembershipRole(str):
+    ADMIN = "admin"
+    MEMBER = "member"
+
+
+class MembershipBase(SQLModel):
+    role: str = Field(default=MembershipRole.MEMBER)
+
+
+class MembershipCreate(MembershipBase):
+    user_id: uuid.UUID
+    org_id: uuid.UUID
+
+
+class MembershipUpdate(MembershipBase):
+    role: str | None = None
+
+
+class Membership(MembershipBase, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    user_id: uuid.UUID = Field(
+        foreign_key="user.id", nullable=False, ondelete="CASCADE", index=True
+    )
+    org_id: uuid.UUID = Field(
+        foreign_key="organization.id", nullable=False, ondelete="CASCADE", index=True
+    )
+    user: User | None = Relationship(back_populates="memberships")
+    organization: Organization | None = Relationship(back_populates="memberships")
+
+
+class MembershipPublic(MembershipBase):
+    id: uuid.UUID
+    user_id: uuid.UUID
+    org_id: uuid.UUID
+
+
+class MembershipsPublic(SQLModel):
+    data: list[MembershipPublic]
     count: int
 
 
@@ -75,6 +149,9 @@ class ItemUpdate(ItemBase):
 # Database model, database table inferred from class name
 class Item(ItemBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    org_id: uuid.UUID = Field(
+        foreign_key="organization.id", nullable=False, ondelete="CASCADE", index=True
+    )
     owner_id: uuid.UUID = Field(
         foreign_key="user.id", nullable=False, ondelete="CASCADE"
     )
@@ -84,6 +161,7 @@ class Item(ItemBase, table=True):
 # Properties to return via API, id is always required
 class ItemPublic(ItemBase):
     id: uuid.UUID
+    org_id: uuid.UUID
     owner_id: uuid.UUID
 
 
@@ -106,6 +184,7 @@ class Token(SQLModel):
 # Contents of JWT token
 class TokenPayload(SQLModel):
     sub: str | None = None
+    active_org_id: str | None = None
 
 
 class NewPassword(SQLModel):

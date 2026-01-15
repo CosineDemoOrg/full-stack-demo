@@ -3,17 +3,20 @@ import {
   createFileRoute,
   Link as RouterLink,
   redirect,
+  useNavigate,
 } from "@tanstack/react-router"
+import { useMutation } from "@tanstack/react-query"
 import { type SubmitHandler, useForm } from "react-hook-form"
 import { FiLock, FiUser } from "react-icons/fi"
 
-import type { UserRegister } from "@/client"
+import type { ApiError, UserRegister } from "@/client"
+import { UsersService } from "@/client"
 import { Button } from "@/components/ui/button"
 import { Field } from "@/components/ui/field"
 import { InputGroup } from "@/components/ui/input-group"
 import { PasswordInput } from "@/components/ui/password-input"
-import useAuth, { isLoggedIn } from "@/hooks/useAuth"
-import { confirmPasswordRules, emailPattern, passwordRules } from "@/utils"
+import { isLoggedIn } from "@/hooks/useAuth"
+import { confirmPasswordRules, emailPattern, handleError, passwordRules } from "@/utils"
 import Logo from "/assets/images/fastapi-logo.svg"
 
 export const Route = createFileRoute("/signup")({
@@ -32,11 +35,12 @@ interface UserRegisterForm extends UserRegister {
 }
 
 function SignUp() {
-  const { signUpMutation } = useAuth()
+  const navigate = useNavigate()
   const {
     register,
     handleSubmit,
     getValues,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<UserRegisterForm>({
     mode: "onBlur",
@@ -49,8 +53,39 @@ function SignUp() {
     },
   })
 
-  const onSubmit: SubmitHandler<UserRegisterForm> = (data) => {
-    signUpMutation.mutate(data)
+  const signUpMutation = useMutation({
+    mutationFn: (data: UserRegister) =>
+      UsersService.registerUser({ requestBody: data }),
+  })
+
+  const onSubmit: SubmitHandler<UserRegisterForm> = async (data) => {
+    try {
+      await signUpMutation.mutateAsync(data)
+      navigate({ to: "/login" })
+    } catch (err) {
+      const apiError = err as ApiError
+      const body: any = apiError.body
+
+      if (apiError.status === 409 && body && body.error === "conflict") {
+        const field = body.field as "email" | "username" | undefined
+        if (field === "email") {
+          setError("email", {
+            type: "server",
+            message: "Email already in use",
+          })
+          return
+        }
+        if (field === "username") {
+          setError("full_name", {
+            type: "server",
+            message: "Username already in use",
+          })
+          return
+        }
+      }
+
+      handleError(apiError)
+    }
   }
 
   return (

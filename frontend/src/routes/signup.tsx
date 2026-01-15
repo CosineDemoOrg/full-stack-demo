@@ -7,13 +7,13 @@ import {
 import { type SubmitHandler, useForm } from "react-hook-form"
 import { FiLock, FiUser } from "react-icons/fi"
 
-import type { UserRegister } from "@/client"
+import type { ApiError, UserRegister } from "@/client"
 import { Button } from "@/components/ui/button"
 import { Field } from "@/components/ui/field"
 import { InputGroup } from "@/components/ui/input-group"
 import { PasswordInput } from "@/components/ui/password-input"
 import useAuth, { isLoggedIn } from "@/hooks/useAuth"
-import { confirmPasswordRules, emailPattern, passwordRules } from "@/utils"
+import { confirmPasswordRules, emailPattern, passwordRules, handleError } from "@/utils"
 import Logo from "/assets/images/fastapi-logo.svg"
 
 export const Route = createFileRoute("/signup")({
@@ -37,6 +37,7 @@ function SignUp() {
     register,
     handleSubmit,
     getValues,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<UserRegisterForm>({
     mode: "onBlur",
@@ -49,8 +50,20 @@ function SignUp() {
     },
   })
 
-  const onSubmit: SubmitHandler<UserRegisterForm> = (data) => {
-    signUpMutation.mutate(data)
+  const onSubmit: SubmitHandler<UserRegisterForm> = async (data) => {
+    try {
+      await signUpMutation.mutateAsync(data)
+    } catch (err) {
+      const apiErr = err as ApiError
+      if (apiErr.status === 409) {
+        const body = apiErr.body as any
+        const field = body?.field ?? "email"
+        const message = body?.message ?? "Already in use"
+        setError(field as keyof UserRegisterForm, { type: "server", message })
+      } else {
+        handleError(apiErr)
+      }
+    }
   }
 
   return (

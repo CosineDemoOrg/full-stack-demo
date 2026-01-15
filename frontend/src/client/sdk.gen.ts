@@ -30,6 +30,30 @@ export class ItemsService {
     }
     
     /**
+     * Export Items
+     * Export items as CSV.
+     * @param data.skip
+     * @param data.limit
+     * @param data.search
+     * @returns string CSV content
+     * @throws ApiError
+     */
+    public static exportItems(data: { skip?: number; limit?: number; search?: string } = {}): CancelablePromise<string> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/items/export',
+            query: {
+                skip: data.skip,
+                limit: data.limit,
+                search: data.search
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
      * Create Item
      * Create new item.
      * @param data The data for the request.

@@ -1,4 +1,5 @@
 import {
+  Button,
   Container,
   EmptyState,
   Flex,
@@ -8,10 +9,10 @@ import {
 } from "@chakra-ui/react"
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { FiSearch } from "react-icons/fi"
+import { FiDownload, FiSearch } from "react-icons/fi"
 import { z } from "zod"
 
-import { ItemsService } from "@/client"
+import { ApiError, ItemsService } from "@/client"
 import { ItemActionsMenu } from "@/components/Common/ItemActionsMenu"
 import AddItem from "@/components/Items/AddItem"
 import PendingItems from "@/components/Pending/PendingItems"
@@ -21,6 +22,7 @@ import {
   PaginationPrevTrigger,
   PaginationRoot,
 } from "@/components/ui/pagination.tsx"
+import { handleError } from "@/utils"
 
 const itemsSearchSchema = z.object({
   page: z.number().catch(1),
@@ -134,11 +136,46 @@ function ItemsTable() {
 }
 
 function Items() {
+  const { page } = Route.useSearch()
+
+  const handleExport = async () => {
+    try {
+      const skip = (page - 1) * PER_PAGE
+      const limit = PER_PAGE
+
+      const csv = await ItemsService.exportItems({ skip, limit })
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.setAttribute("download", "items.csv")
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      if (error instanceof ApiError) {
+        handleError(error)
+      } else {
+        // Fallback for unexpected errors
+        console.error(error)
+      }
+    }
+  }
+
   return (
     <Container maxW="full">
-      <Heading size="lg" pt={12}>
-        Items Management
-      </Heading>
+      <Flex alignItems="center" justifyContent="space-between" pt={12} mb={4}>
+        <Heading size="lg">Items Management</Heading>
+        <Button
+          leftIcon={<FiDownload />}
+          variant="outline"
+          size="sm"
+          onClick={handleExport}
+        >
+          Export CSV
+        </Button>
+      </Flex>
       <AddItem />
       <ItemsTable />
     </Container>

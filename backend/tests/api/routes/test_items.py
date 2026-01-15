@@ -162,3 +162,53 @@ def test_delete_item_not_enough_permissions(
     assert response.status_code == 400
     content = response.json()
     assert content["detail"] == "Not enough permissions"
+
+
+def test_export_items_csv(
+    client: TestClient, superuser_token_headers: dict[str, str], db: Session
+) -> None:
+    item_1 = create_random_item(db)
+    item_2 = create_random_item(db)
+
+    response = client.get(
+        f"{settings.API_V1_STR}/items/export",
+        headers=superuser_token_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/csv")
+
+    body = response.text.splitlines()
+    # header + at least two items
+    assert body[0] == "id,name,created_at"
+    csv_content = "\n".join(body[1:])
+    assert str(item_1.id) in csv_content
+    assert str(item_2.id) in csv_content
+
+
+def test_export_items_search_filter(
+    client: TestClient, superuser_token_headers: dict[str, str], db: Session
+) -> None:
+    item_match = create_random_item(db)
+    item_match.title = "Export Match"
+    db.add(item_match)
+    db.commit()
+    db.refresh(item_match)
+
+    item_other = create_random_item(db)
+    item_other.title = "Other Title"
+    db.add(item_other)
+    db.commit()
+    db.refresh(item_other)
+
+    response = client.get(
+        f"{settings.API_V1_STR}/items/export",
+        headers=superuser_token_headers,
+        params={"search": "Export"},
+    )
+
+    assert response.status_code == 200
+    body = response.text.splitlines()
+    csv_content = "\n".join(body[1:])
+    assert str(item_match.id) in csv_content
+    assert str(item_other.id) not in csv_content

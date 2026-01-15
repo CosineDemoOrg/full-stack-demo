@@ -1,7 +1,10 @@
+import csv
+import io
 import uuid
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
@@ -39,6 +42,69 @@ def read_items(
         items = session.exec(statement).all()
 
     return ItemsPublic(data=items, count=count)
+
+
+@router.get("/export")
+def export_items(
+    session: SessionDep,
+    current_user: CurrentUser,
+    search: str | None = None,
+    skip: int = 0,
+    limit: int = 100,
+) -> StreamingResponse:
+    """
+    Export items as CSV.
+
+    The CSV has the header: id,name,created_at
+    - id: Item ID
+    - name: Item title
+    - created_at: left empty (not tracked in the current schema)
+    """
+
+    if current_user.is_superuser:
+        count_statement = select(func.count()).select_from(Item)
+        if search:
+            count_statement = count_statement.where(Item.title.contains(search))
+        count = session.exec(count_statement).one()
+        statement = select(Item)
+        if search:
+            statement = statement.where(Item.title.contains(search))
+        statement = statement.offset(skip).limit(limit)
+        items = session.exec(statement).all()
+    else:
+        count_statement = (
+            select(func.count())
+            .select_from(Item)
+            .where(Item.owner_id == current_user.id)
+        )
+        if search:
+            count_statement = count_statement.where(Item.title.contains(search))
+        count = session.exec(count_statement).one()
+        statement = (
+            select(Item)
+            .where(Item.owner_id == current_user.id)
+        )
+        if search:
+            statement = statement.where(Item.title.contains(search))
+        statement = statement.offset(skip).limit(limit)
+        items = session.exec(statement).all()
+
+    # Build CSV content matching the current visible list (pagination + search)
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["id", "name", "created_at"])
+    for item in items:
+        writer.writerow([str(item.id), item.title, ""])
+
+    output.seek(0)
+    headers = {
+        "Content-Disposition": 'attachment; filename="items.csv"',
+    }
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers=headers,
+    )
 
 
 @router.get("/{id}", response_model=ItemPublic)

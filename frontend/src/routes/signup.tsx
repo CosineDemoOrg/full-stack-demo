@@ -68,17 +68,20 @@ function SignUp() {
 
       if (apiError.status === 409 && body && body.error === "conflict") {
         const field = body.field as "email" | "username" | undefined
+        const loginSuggestion =
+          "An account with these details already exists. Please try logging in with that account."
+
         if (field === "email") {
           setError("email", {
             type: "server",
-            message: "Email already in use",
+            message: loginSuggestion,
           })
           return
         }
         if (field === "username") {
           setError("full_name", {
             type: "server",
-            message: "Username already in use",
+            message: loginSuggestion,
           })
           return
         }

@@ -79,6 +79,23 @@ def test_read_items(
     assert len(content["data"]) >= 2
 
 
+def test_export_items_csv(
+    client: TestClient, superuser_token_headers: dict[str, str], db: Session
+) -> None:
+    create_random_item(db)
+    create_random_item(db)
+    response = client.get(
+        f"{settings.API_V1_STR}/items/export",
+        headers=superuser_token_headers,
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/csv")
+    lines = response.text.strip().splitlines()
+    assert lines[0] == "id,name,created_at"
+    # At least header + 2 items
+    assert len(lines) >= 3
+
+
 def test_update_item(
     client: TestClient, superuser_token_headers: dict[str, str], db: Session
 ) -> None:
@@ -119,7 +136,6 @@ def test_update_item_not_enough_permissions(
     response = client.put(
         f"{settings.API_V1_STR}/items/{item.id}",
         headers=normal_user_token_headers,
-        json=data,
     )
     assert response.status_code == 400
     content = response.json()

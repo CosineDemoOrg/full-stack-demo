@@ -1,4 +1,5 @@
 import {
+  Button,
   Container,
   EmptyState,
   Flex,
@@ -11,7 +12,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { FiSearch } from "react-icons/fi"
 import { z } from "zod"
 
-import { ItemsService } from "@/client"
+import { ItemsService, OpenAPI } from "@/client"
 import { ItemActionsMenu } from "@/components/Common/ItemActionsMenu"
 import AddItem from "@/components/Items/AddItem"
 import PendingItems from "@/components/Pending/PendingItems"
@@ -21,6 +22,7 @@ import {
   PaginationPrevTrigger,
   PaginationRoot,
 } from "@/components/ui/pagination.tsx"
+import useCustomToast from "@/hooks/useCustomToast"
 
 const itemsSearchSchema = z.object({
   page: z.number().catch(1),
@@ -134,12 +136,56 @@ function ItemsTable() {
 }
 
 function Items() {
+  const { page } = Route.useSearch()
+  const { showErrorToast } = useCustomToast()
+
+  const handleExport = async () => {
+    const skip = (page - 1) * PER_PAGE
+    const limit = PER_PAGE
+
+    const params = new URLSearchParams()
+    params.set("skip", String(skip))
+    params.set("limit", String(limit))
+
+    const token = localStorage.getItem("access_token") || ""
+
+    try {
+      const response = await fetch(
+        `${OpenAPI.BASE}/api/v1/items/export?${params.toString()}`,
+        {
+          headers: {
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+        },
+      )
+
+      if (!response.ok) {
+        throw new Error(`Failed to export items: ${response.statusText}`)
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = "items.csv"
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      showErrorToast("Unable to export items. Please try again.")
+    }
+  }
+
   return (
     <Container maxW="full">
       <Heading size="lg" pt={12}>
         Items Management
       </Heading>
-      <AddItem />
+      <Flex justifyContent="space-between" alignItems="center" my={4}>
+        <AddItem />
+        <Button onClick={handleExport}>Export CSV</Button>
+      </Flex>
       <ItemsTable />
     </Container>
   )

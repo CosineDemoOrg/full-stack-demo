@@ -1,7 +1,10 @@
+import csv
+import io
 import uuid
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import Response
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
@@ -39,6 +42,40 @@ def read_items(
         items = session.exec(statement).all()
 
     return ItemsPublic(data=items, count=count)
+
+
+@router.get("/export")
+def export_items(
+    session: SessionDep,
+    current_user: CurrentUser,
+    skip: int = 0,
+    limit: int = 100,
+    search: str | None = None,
+) -> Response:
+    """
+    Export items as CSV.
+    """
+    statement = select(Item)
+    if not current_user.is_superuser:
+        statement = statement.where(Item.owner_id == current_user.id)
+    if search:
+        pattern = f"%{search}%"
+        statement = statement.where(Item.title.ilike(pattern))
+    statement = statement.offset(skip).limit(limit)
+    items = session.exec(statement).all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["id", "name", "created_at"])
+    for item in items:
+        writer.writerow([str(item.id), item.title, ""])
+
+    csv_content = output.getvalue()
+    return Response(
+        content=csv_content,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=items.csv"},
+    )
 
 
 @router.get("/{id}", response_model=ItemPublic)

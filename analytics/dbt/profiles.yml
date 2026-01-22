@@ -1,0 +1,13 @@
+tableau_profile:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: ${POSTGRES_SERVER}
+      user: ${POSTGRES_USER}
+      password: ${POSTGRES_PASSWORD}
+      port: ${POSTGRES_PORT}
+      dbname: ${POSTGRES_DB}
+      schema: analytics
+      threads: 4
+      keepalives_idle: 0

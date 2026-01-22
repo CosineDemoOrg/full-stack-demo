@@ -1,0 +1,41 @@
+version: 2
+
+sources:
+  - name: public
+    schema: public
+    tables:
+      - name: user
+      - name: item
+
+models:
+  - name: users
+    description: Base users dataset for analytics and Tableau
+    columns:
+      - name: user_id
+        tests: [not_null, unique]
+      - name: email
+        tests: [not_null]
+      - name: full_name
+      - name: is_active
+      - name: is_superuser
+
+  - name: items
+    description: Base items dataset joined to users
+    columns:
+      - name: item_id
+        tests: [not_null, unique]
+      - name: user_id
+        tests: [not_null]
+      - name: title
+      - name: description
+
+  - name: tableau_user_dataset
+    description: Aggregated user dataset for Tableau (includes item counts)
+    columns:
+      - name: user_id
+        tests: [not_null, unique]
+      - name: email
+      - name: full_name
+      - name: is_active
+      - name: is_superuser
+      - name: item_count

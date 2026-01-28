@@ -1,4 +1,5 @@
 import {
+  Button,
   Container,
   EmptyState,
   Flex,
@@ -8,10 +9,10 @@ import {
 } from "@chakra-ui/react"
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { FiSearch } from "react-icons/fi"
+import { FiDownload, FiSearch } from "react-icons/fi"
 import { z } from "zod"
 
-import { ItemsService } from "@/client"
+import { ItemsService, OpenAPI } from "@/client"
 import { ItemActionsMenu } from "@/components/Common/ItemActionsMenu"
 import AddItem from "@/components/Items/AddItem"
 import PendingItems from "@/components/Pending/PendingItems"
@@ -134,11 +135,54 @@ function ItemsTable() {
 }
 
 function Items() {
+  const { page } = Route.useSearch()
+
+  const handleExport = async () => {
+    const params = new URLSearchParams()
+    params.set("skip", String((page - 1) * PER_PAGE))
+    params.set("limit", String(PER_PAGE))
+
+    const token = localStorage.getItem("access_token")
+
+    const response = await fetch(
+      `${OpenAPI.BASE}/api/v1/items/export?${params.toString()}`,
+      {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      },
+    )
+
+    if (!response.ok) {
+      // In a real app we might want to show a toast here
+      // For now, just return silently.
+      return
+    }
+
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = "items.csv"
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  }
+
   return (
     <Container maxW="full">
-      <Heading size="lg" pt={12}>
-        Items Management
-      </Heading>
+      <Flex justify="space-between" align="center" pt={12}>
+        <Heading size="lg">Items Management</Heading>
+        <Button
+          size="sm"
+          leftIcon={<FiDownload />}
+          variant="outline"
+          onClick={handleExport}
+        >
+          Export CSV
+        </Button>
+      </Flex>
       <AddItem />
       <ItemsTable />
     </Container>

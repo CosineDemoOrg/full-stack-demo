@@ -1,7 +1,10 @@
 import uuid
 from typing import Any
+from io import StringIO
+import csv
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import Response
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
@@ -39,6 +42,46 @@ def read_items(
         items = session.exec(statement).all()
 
     return ItemsPublic(data=items, count=count)
+
+
+@router.get("/export")
+def export_items(
+    session: SessionDep,
+    current_user: CurrentUser,
+    skip: int = 0,
+    limit: int = 100,
+    search: str | None = None,
+) -> Response:
+    """Export items as CSV.
+
+    Respects the same ownership rules as the standard list endpoint and supports
+    optional text search on the item title.
+    """
+
+    base_statement = select(Item)
+
+    if not current_user.is_superuser:
+        base_statement = base_statement.where(Item.owner_id == current_user.id)
+
+    if search:
+        base_statement = base_statement.where(Item.title.contains(search))
+
+    statement = base_statement.offset(skip).limit(limit)
+    items = session.exec(statement).all()
+
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["id", "name", "created_at"])
+    for item in items:
+        writer.writerow(
+            [
+                str(item.id),
+                item.title,
+                item.created_at.isoformat(),
+            ]
+        )
+
+    return Response(content=output.getvalue(), media_type="text/csv")
 
 
 @router.get("/{id}", response_model=ItemPublic)

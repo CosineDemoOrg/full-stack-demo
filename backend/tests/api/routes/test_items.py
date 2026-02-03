@@ -79,6 +79,23 @@ def test_read_items(
     assert len(content["data"]) >= 2
 
 
+def test_export_items_csv(
+    client: TestClient, superuser_token_headers: dict[str, str], db: Session
+) -> None:
+    item = create_random_item(db)
+    response = client.get(
+        f"{settings.API_V1_STR}/items/export",
+        headers=superuser_token_headers,
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/csv")
+    lines = response.text.strip().split("\n")
+    assert lines[0] == "id,name,created_at"
+    # One data line for the created item
+    assert len(lines) >= 2
+    assert str(item.id) in lines[1]
+
+
 def test_update_item(
     client: TestClient, superuser_token_headers: dict[str, str], db: Session
 ) -> None:

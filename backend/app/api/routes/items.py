@@ -1,7 +1,9 @@
+import csv
+import io
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
@@ -41,11 +43,46 @@ def read_items(
     return ItemsPublic(data=items, count=count)
 
 
+@router.get("/export")
+def export_items(
+    session: SessionDep,
+    current_user: CurrentUser,
+    skip: int = 0,
+    limit: int = 100,
+    search: str | None = None,
+) -> Response:
+    """Export items as CSV matching the current filters/pagination."""
+
+    if current_user.is_superuser:
+        statement = select(Item)
+    else:
+        statement = select(Item).where(Item.owner_id == current_user.id)
+
+    if search:
+        statement = statement.where(Item.title.contains(search))
+
+    statement = statement.offset(skip).limit(limit)
+    items = session.exec(statement).all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["id", "name", "created_at"])
+    for item in items:
+        writer.writerow([str(item.id), item.title, ""])
+
+    csv_content = output.getvalue()
+    return Response(
+        content=csv_content,
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": "attachment; filename=items.csv",
+        },
+    )
+
+
 @router.get("/{id}", response_model=ItemPublic)
 def read_item(session: SessionDep, current_user: CurrentUser, id: uuid.UUID) -> Any:
-    """
-    Get item by ID.
-    """
+    """Get item by ID."""
     item = session.get(Item, id)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")

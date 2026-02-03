@@ -130,6 +130,11 @@ git merge --continue
 
 You can then update configs in the `.env` files to customize your configurations.
 
+To configure how emails are sent (for example, welcome emails and password reset emails), set the `NOTIFICATIONS_PROVIDER` environment variable in your `.env` files:
+
+- `NOTIFICATIONS_PROVIDER=smtp` (default): send real emails using the configured SMTP settings (`SMTP_HOST`, `SMTP_USER`, etc.).
+- `NOTIFICATIONS_PROVIDER=console`: log email notifications to the backend logs instead of sending them. This is useful for local development when you don't have SMTP configured.
+
 Before deploying it, make sure you change at least the values for:
 
 - `SECRET_KEY`

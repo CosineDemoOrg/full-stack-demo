@@ -1,4 +1,5 @@
 import {
+  Button,
   Container,
   EmptyState,
   Flex,
@@ -8,10 +9,11 @@ import {
 } from "@chakra-ui/react"
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { FiSearch } from "react-icons/fi"
+import { FiDownload, FiSearch } from "react-icons/fi"
 import { z } from "zod"
 
-import { ItemsService } from "@/client"
+import { ApiError, ItemsService, OpenAPI } from "@/client"
+import { request } from "@/client/core/request"
 import { ItemActionsMenu } from "@/components/Common/ItemActionsMenu"
 import AddItem from "@/components/Items/AddItem"
 import PendingItems from "@/components/Pending/PendingItems"
@@ -21,6 +23,7 @@ import {
   PaginationPrevTrigger,
   PaginationRoot,
 } from "@/components/ui/pagination.tsx"
+import { handleError } from "@/utils"
 
 const itemsSearchSchema = z.object({
   page: z.number().catch(1),
@@ -60,6 +63,34 @@ function ItemsTable() {
   const items = data?.data.slice(0, PER_PAGE) ?? []
   const count = data?.count ?? 0
 
+  const handleDownloadCsv = async () => {
+    try {
+      const csv = await request<string>(OpenAPI, {
+        method: "GET",
+        url: "/api/v1/items/export",
+        query: {
+          skip: (page - 1) * PER_PAGE,
+          limit: PER_PAGE,
+        },
+        headers: {
+          Accept: "text/csv",
+        },
+      })
+
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.setAttribute("download", "items.csv")
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      handleError(error as ApiError)
+    }
+  }
+
   if (isLoading) {
     return <PendingItems />
   }
@@ -84,6 +115,16 @@ function ItemsTable() {
 
   return (
     <>
+      <Flex justifyContent="flex-end" mb={4}>
+        <Button
+          size="sm"
+          leftIcon={<FiDownload />}
+          onClick={handleDownloadCsv}
+          variant="outline"
+        >
+          Export CSV
+        </Button>
+      </Flex>
       <Table.Root size={{ base: "sm", md: "md" }}>
         <Table.Header>
           <Table.Row>
@@ -144,3 +185,5 @@ function Items() {
     </Container>
   )
 }
+
+export default Items

@@ -84,6 +84,7 @@ class Settings(BaseSettings):
         return self
 
     EMAIL_RESET_TOKEN_EXPIRE_HOURS: int = 48
+    NOTIFICATIONS_PROVIDER: Literal["console", "smtp"] = "smtp"
 
     @computed_field  # type: ignore[prop-decorator]
     @property

@@ -170,3 +170,22 @@ The email templates are in `./backend/app/email-templates/`. Here, there are two
 Before continuing, ensure you have the [MJML extension](https://marketplace.visualstudio.com/items?itemName=attilabuti.vscode-mjml) installed in your VS Code.
 
 Once you have the MJML extension installed, you can create a new email template in the `src` directory. After creating the new email template and with the `.mjml` file open in your editor, open the command palette with `Ctrl+Shift+P` and search for `MJML: Export to HTML`. This will convert the `.mjml` file to a `.html` file and now you can save it in the build directory.
+
+## Notifications providers
+
+Email sending is handled through a simple notifications service with pluggable providers.
+
+The provider is selected via the `NOTIFICATIONS_PROVIDER` environment variable (read in `app.core.config.Settings`). Supported values are:
+
+* `smtp` (default): sends real emails using the configured SMTP settings (`SMTP_HOST`, `SMTP_PORT`, etc.).
+* `console`: does not send real emails; instead it logs the email details to the backend logs.
+
+### How to switch provider
+
+1. Open your `.env` file (one level above `./backend/`).
+2. Set `NOTIFICATIONS_PROVIDER` to one of:
+   * `NOTIFICATIONS_PROVIDER=smtp` – use the SMTP provider (requires valid SMTP configuration).
+   * `NOTIFICATIONS_PROVIDER=console` – log emails to the console instead of sending them.
+3. Restart the backend so the new configuration is picked up.
+
+All existing flows (welcome emails, password reset, test email endpoint) automatically use the selected provider; no frontend changes are required.

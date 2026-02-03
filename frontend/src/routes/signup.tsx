@@ -7,7 +7,7 @@ import {
 import { type SubmitHandler, useForm } from "react-hook-form"
 import { FiLock, FiUser } from "react-icons/fi"
 
-import type { UserRegister } from "@/client"
+import type { ApiError, UserRegister } from "@/client"
 import { Button } from "@/components/ui/button"
 import { Field } from "@/components/ui/field"
 import { InputGroup } from "@/components/ui/input-group"
@@ -37,6 +37,7 @@ function SignUp() {
     register,
     handleSubmit,
     getValues,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<UserRegisterForm>({
     mode: "onBlur",
@@ -50,7 +51,19 @@ function SignUp() {
   })
 
   const onSubmit: SubmitHandler<UserRegisterForm> = (data) => {
-    signUpMutation.mutate(data)
+    signUpMutation.mutate(data, {
+      onError: (error: ApiError) => {
+        if (error.status === 409) {
+          const body = error.body as { error?: string; field?: string } | null
+          if (body?.error === "conflict" && body.field === "email") {
+            setError("email", {
+              type: "server",
+              message: "Email already in use",
+            })
+          }
+        }
+      },
+    })
   }
 
   return (

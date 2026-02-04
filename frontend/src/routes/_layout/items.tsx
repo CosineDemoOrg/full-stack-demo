@@ -1,4 +1,5 @@
 import {
+  Button,
   Container,
   EmptyState,
   Flex,
@@ -8,10 +9,11 @@ import {
 } from "@chakra-ui/react"
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { FiSearch } from "react-icons/fi"
+import axios from "axios"
+import { FiDownload, FiSearch } from "react-icons/fi"
 import { z } from "zod"
 
-import { ItemsService } from "@/client"
+import { ItemsService, OpenAPI } from "@/client"
 import { ItemActionsMenu } from "@/components/Common/ItemActionsMenu"
 import AddItem from "@/components/Items/AddItem"
 import PendingItems from "@/components/Pending/PendingItems"
@@ -21,6 +23,7 @@ import {
   PaginationPrevTrigger,
   PaginationRoot,
 } from "@/components/ui/pagination.tsx"
+import useCustomToast from "@/hooks/useCustomToast"
 
 const itemsSearchSchema = z.object({
   page: z.number().catch(1),
@@ -44,6 +47,7 @@ export const Route = createFileRoute("/_layout/items")({
 function ItemsTable() {
   const navigate = useNavigate({ from: Route.fullPath })
   const { page } = Route.useSearch()
+  const { showErrorToast } = useCustomToast()
 
   const { data, isLoading, isPlaceholderData } = useQuery({
     ...getItemsQueryOptions({ page }),
@@ -55,6 +59,40 @@ function ItemsTable() {
       to: "/items",
       search: (prev) => ({ ...prev, page }),
     })
+  }
+
+  const handleExport = async () => {
+    try {
+      const token = localStorage.getItem("access_token") || ""
+      const params = {
+        skip: (page - 1) * PER_PAGE,
+        limit: PER_PAGE,
+      }
+      const response = await axios.get(
+        `${OpenAPI.BASE}/api/v1/items/export`,
+        {
+          params,
+          responseType: "blob",
+          headers: {
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+        },
+      )
+
+      const blob = new Blob([response.data], {
+        type: "text/csv;charset=utf-8;",
+      })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.setAttribute("download", "items.csv")
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      showErrorToast("Failed to export items.")
+    }
   }
 
   const items = data?.data.slice(0, PER_PAGE) ?? []
@@ -84,6 +122,16 @@ function ItemsTable() {
 
   return (
     <>
+      <Flex justifyContent="flex-end" mb={4}>
+        <Button
+          variant="outline"
+          size="sm"
+          leftIcon={<FiDownload />}
+          onClick={handleExport}
+        >
+          Export CSV
+        </Button>
+      </Flex>
       <Table.Root size={{ base: "sm", md: "md" }}>
         <Table.Header>
           <Table.Row>
@@ -128,12 +176,7 @@ function ItemsTable() {
             <PaginationNextTrigger />
           </Flex>
         </PaginationRoot>
-      </Flex>
-    </>
-  )
-}
-
-function Items() {
+      </</old_code><new_code>function Items() {
   return (
     <Container maxW="full">
       <Heading size="lg" pt={12}>

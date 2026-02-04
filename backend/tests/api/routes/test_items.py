@@ -162,3 +162,155 @@ def test_delete_item_not_enough_permissions(
     assert response.status_code == 400
     content = response.json()
     assert content["detail"] == "Not enough permissions"
+
+
+def test_export_items_csv(
+    client: TestClient, superuser_token_headers: dict[str, str], db: Session
+) -> None:
+    item1 = create_random_item(db)
+    item2 = create_random_item(db)
+
+    response = client.get(
+        f"{settings.API_V1_STR}/items/export",
+        headers=superuser_token_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/csv")
+
+    lines = response.text.strip().split("\n")
+    assert lines[0] == "id,name,created_at"
+
+    # At least the two created items should be present (order is not guaranteed)
+    csv_body = "\n".join(lines[1:])
+    assert str(item1.id) in csv_body
+    assert item1.title in csv_body
+    assert str(item2.id) in csv_body
+    assert item2.title in csv_body
+
+
+def test_export_items_csv(
+    client: TestClient, superuser_token_headers: dict[str, str], db: Session
+) -> None:
+    item1 = create_random_item(db)
+    item2 = create_random_item(db)
+
+    response = client.get(
+        f"{settings.API_V1_STR}/items/export",
+        headers=superuser_token_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/csv")
+
+    lines = response.text.strip().split("\n")
+    assert lines[0] == "id,name,created_at"
+
+    # At least the two created items should be present (order is not guaranteed)
+    csv_body = "\n".join(lines[1:])
+    assert str(item1.id) in csv_body
+    assert item1.title in csv_body
+    assert str(item2.id) in csv_body
+    assert item2.title in csv_bodynough permissions"
+
+
+def test_delete_item(
+    client: TestClient, superuser_token_headers: dict[str, str], db: Session
+) -> None:
+    item = create_random_item(db)
+    response e</old_code><new_code>def test_delete_item(
+    client: TestClient, superuser_token_headers: dict[str, str], db: Session
+) -> None:
+    item = create_random_item(db)
+    response = client.delete(
+        f"{settings.API_V1_STR}/items/{item.id}",
+        headers=superuser_token_headers,
+    )
+    assert response.status_code == 200
+    content = response.json()
+    assert content["message"] == "Item deleted successfully"
+
+
+def test_delete_item_not_found(
+    client: TestClient, superuser_token_headers: dict[str, str]
+) -> None:
+    response = client.delete(
+        f"{settings.API_V1_STR}/items/{uuid.uuid4()}",
+        headers=superuser_token_headers,
+    )
+    assert response.status_code == 404
+    content = response.json()
+    assert content["detail"] == "Item not found"
+
+
+def test_delete_item_not_enough_permissions(
+    client: TestClient, normal_user_token_headers: dict[str, str], db: Session
+) -> None:
+    item = create_random_item(db)
+    response = client.delete(
+        f"{settings.API_V1_STR}/items/{item.id}",
+        headers=normal_user_token_headers,
+    )
+    assert response.status_code == 400
+    content = response.json()
+    assert content["detail"] == "Not enough permissions"
+
+
+def test_export_items_csv(
+    client: TestClient, superuser_token_headers: dict[str, str], db: Session
+) -> None:
+    item1 = create_random_item(db)
+    item2 = create_random_item(db)
+
+    response = client.get(
+        f"{settings.API_V1_STR}/items/export",
+        headers=superuser_token_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/csv")
+
+    lines = response.text.strip().split("\n")
+    assert lines[0] == "id,name,created_at"
+
+    # At least the two created items should be present (order is not guaranteed)
+    csv_body = "\n".join(lines[1:])
+    assert str(item1.id) in csv_body
+    assert item1.title in csv_body
+    assert str(item2.id) in csv_body
+    assert item2.title in csv_body</old_code><new_code>def test_delete_item_not_enough_permissions(
+    client: TestClient, normal_user_token_headers: dict[str, str], db: Session
+) -> None:
+    item = create_random_item(db)
+    response = client.delete(
+        f"{settings.API_V1_STR}/items/{item.id}",
+        headers=normal_user_token_headers,
+    )
+    assert response.status_code == 400
+    content = response.json()
+    assert content["detail"] == "Not enough permissions"
+
+
+def test_export_items_csv(
+    client: TestClient, superuser_token_headers: dict[str, str], db: Session
+) -> None:
+    item1 = create_random_item(db)
+    item2 = create_random_item(db)
+
+    response = client.get(
+        f"{settings.API_V1_STR}/items/export",
+        headers=superuser_token_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/csv")
+
+    lines = response.text.strip().split("\n")
+    assert lines[0] == "id,name,created_at"
+
+    # At least the two created items should be present (order is not guaranteed)
+    csv_body = "\n".join(lines[1:])
+    assert str(item1.id) in csv_body
+    assert item1.title in csv_body
+    assert str(item2.id) in csv_body
+    assert item2.title in csv_body

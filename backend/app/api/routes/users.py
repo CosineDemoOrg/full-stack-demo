@@ -1,6 +1,7 @@
 import uuid
 from typing import Any
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import col, delete, func, select
 
@@ -153,6 +154,56 @@ def register_user(session: SessionDep, user_in: UserRegister) -> Any:
     user_create = UserCreate.model_validate(user_in)
     user = crud.create_user(session=session, user_create=user_create)
     return user
+
+
+@router.post("/auth0-signup")
+def auth0_signup(user_in: UserRegister) -> Any:
+    """Proxy sign-up to Auth0's /dbconnections/signup endpoint.
+
+    This creates a new user in Auth0's database connection configured by
+    AUTH0_CONNECTION. It does **not** create a local user in this service.
+    """
+
+    if not settings.AUTH0_DOMAIN or not settings.AUTH0_CLIENT_ID:
+        raise HTTPException(
+            status_code=500,
+            detail="Auth0 is not configured. Please set AUTH0_DOMAIN and AUTH0_CLIENT_ID.",
+        )
+
+    payload: dict[str, Any] = {
+        "client_id": settings.AUTH0_CLIENT_ID,
+        "email": user_in.email,
+        "password": user_in.password,
+        "connection": settings.AUTH0_CONNECTION,
+    }
+
+    if user_in.full_name:
+        payload["name"] = user_in.full_name
+
+    url = f"https://{settings.AUTH0_DOMAIN}/dbconnections/signup"
+
+    try:
+        response = httpx.post(url, json=payload, timeout=10.0)
+    except httpx.RequestError:
+        raise HTTPException(
+            status_code=502,
+            detail="Error communicating with Auth0 signup API.",
+        )
+
+    # Auth0 returns 200 on success; on error it still returns JSON with an "error" key.
+    if response.status_code not in (200, 201):
+        # Try to surface Auth0's error message to the client.
+        try:
+            error_body = response.json()
+        except ValueError:  # response is not JSON
+            error_body = {"message": response.text}
+        raise HTTPException(status_code=response.status_code, detail=error_body)
+
+    try:
+        return response.json()
+    except ValueError:
+        # Should not happen for Auth0, but guard just in case.
+        return {"message": "User created in Auth0, but response was not JSON."}
 
 
 @router.get("/{user_id}", response_model=UserPublic)

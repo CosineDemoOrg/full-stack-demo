@@ -94,6 +94,11 @@ class Settings(BaseSettings):
     FIRST_SUPERUSER: EmailStr
     FIRST_SUPERUSER_PASSWORD: str
 
+    # Auth0 configuration for signup via Authentication API
+    AUTH0_DOMAIN: str | None = None
+    AUTH0_CLIENT_ID: str | None = None
+    AUTH0_CONNECTION: str = "Username-Password-Authentication"
+
     def _check_default_secret(self, var_name: str, value: str | None) -> None:
         if value == "changethis":
             message = (

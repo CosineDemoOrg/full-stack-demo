@@ -34,6 +34,11 @@ const useAuth = () => {
       navigate({ to: "/login" })
     },
     onError: (err: ApiError) => {
+      const body = err.body as any
+      if (err.status === 409 && body?.error === "conflict") {
+        // Let the form handle conflict errors inline
+        return
+      }
       handleError(err)
     },
     onSettled: () => {

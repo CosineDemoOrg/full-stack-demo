@@ -5,6 +5,7 @@ import {
   redirect,
 } from "@tanstack/react-router"
 import { type SubmitHandler, useForm } from "react-hook-form"
+import { ApiError } from "@/client"
 import { FiLock, FiUser } from "react-icons/fi"
 
 import type { UserRegister } from "@/client"
@@ -37,6 +38,8 @@ function SignUp() {
     register,
     handleSubmit,
     getValues,
+    setError,
+    clearErrors,
     formState: { errors, isSubmitting },
   } = useForm<UserRegisterForm>({
     mode: "onBlur",
@@ -49,8 +52,27 @@ function SignUp() {
     },
   })
 
-  const onSubmit: SubmitHandler<UserRegisterForm> = (data) => {
-    signUpMutation.mutate(data)
+  const onSubmit: SubmitHandler<UserRegisterForm> = async (data) => {
+    clearErrors("email")
+    try {
+      await signUpMutation.mutateAsync(data)
+    } catch (error) {
+      if (error instanceof ApiError) {
+        const body = error.body as any
+        if (error.status === 409 && body?.error === "conflict") {
+          if (body.field === "email") {
+            setError("email", {
+              type: "server",
+              message: "This email is already registered",
+            })
+          }
+          return
+        }
+      }
+
+      // Re-throw or handle other errors (handled globally via useAuth)
+      throw error
+    }
   }
 
   return (

@@ -7,13 +7,13 @@ import {
 import { type SubmitHandler, useForm } from "react-hook-form"
 import { FiLock, FiUser } from "react-icons/fi"
 
-import type { UserRegister } from "@/client"
+import type { ApiError, UserRegister } from "@/client"
 import { Button } from "@/components/ui/button"
 import { Field } from "@/components/ui/field"
 import { InputGroup } from "@/components/ui/input-group"
 import { PasswordInput } from "@/components/ui/password-input"
 import useAuth, { isLoggedIn } from "@/hooks/useAuth"
-import { confirmPasswordRules, emailPattern, passwordRules } from "@/utils"
+import { confirmPasswordRules, emailPattern, handleError, passwordRules } from "@/utils"
 import Logo from "/assets/images/fastapi-logo.svg"
 
 export const Route = createFileRoute("/signup")({
@@ -49,8 +49,32 @@ function SignUp() {
     },
   })
 
-  const onSubmit: SubmitHandler<UserRegisterForm> = (data) => {
-    signUpMutation.mutate(data)
+  const onSubmit: SubmitHandler<UserRegisterForm> = async (data) => {
+    try {
+      await signUpMutation.mutateAsync(data)
+    } catch (error) {
+      const err = error as ApiError
+      const body = err.body as any
+
+      if (err.status === 409 && body?.error === "conflict") {
+        if (body.field === "email") {
+          setError("email", {
+            type: "server",
+            message: "The user with this email already exists in the system",
+          })
+          return
+        }
+        if (body.field === "username") {
+          setError("full_name", {
+            type: "server",
+            message: "This username is already taken",
+          })
+          return
+        }
+      }
+
+      handleError(err)
+    }
   }
 
   return (

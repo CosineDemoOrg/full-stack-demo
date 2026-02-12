@@ -68,6 +68,9 @@ class Settings(BaseSettings):
             path=self.POSTGRES_DB,
         )
 
+    # Notifications / Email settings
+    NOTIFICATIONS_PROVIDER: Literal["console", "smtp"] = "console"
+
     SMTP_TLS: bool = True
     SMTP_SSL: bool = False
     SMTP_PORT: int = 587

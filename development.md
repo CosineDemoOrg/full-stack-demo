@@ -1,207 +1,262 @@
-# FastAPI Project - Development
+# FastAPI Project - Local Development Workflow Guide
 
-## Docker Compose
+## 1. Overview
 
-* Start the local stack with Docker Compose:
+Use this guide to run the project locally, switch between Docker containers and local dev servers, configure domains and environment variables, and find the right URLs during development.
 
-```bash
+This guide helps you:
+
+- Bring up the entire stack quickly with Docker.
+- Swap individual services between containerized and local dev modes.
+- Configure domains (including `localhost.tiangolo.com`) for realistic routing.
+- Understand which environment variables and files control your local setup.
+- Discover the URLs for each service in development.
+
+## 2. Quick-Start
+
+Follow these steps to get a full local stack running:
+
+- Ensure you have Docker and Docker Compose installed.
+- Create or update your `.env` file at the repo root (you can base it on any existing template provided by your team).
+- From the repo root, start the stack:
+
+  ```
+  docker compose watch
+  ```
+
+- Once services are up, open:
+  - Frontend: `http://localhost:5173`
+  - Backend API: `http://localhost:8000`
+  - API docs: `http://localhost:8000/docs`
+
+- To stop the stack:
+
+  ```
+  docker compose down
+  ```
+
+## 3. Key Concepts / Responsibilities
+
+### 3.1 Stack layout
+
+- `docker-compose.yml`
+  - Defines the core stack (backend, frontend, database, Traefik, Adminer, MailCatcher, etc.).
+  - Used automatically by `docker compose`.
+- `docker-compose.override.yml`
+  - Development overrides on top of `docker-compose.yml`.
+  - Commonly mounts local source code into containers and exposes ports on `localhost`.
+- `.env`
+  - Lives at the repo root.
+  - Provides configuration and secrets used by Docker Compose and the application.
+  - Changes here affect container configuration on the next stack restart.
+
+### 3.2 Ports and service responsibilities
+
+By default, each service is exposed on a dedicated `localhost` port:
+
+- Frontend: `http://localhost:5173`
+- Backend API: `http://localhost:8000`
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
+- Adminer (DB admin): `http://localhost:8080`
+- Traefik dashboard: `http://localhost:8090`
+- MailCatcher: `http://localhost:1080`
+
+These ports match the local dev servers for backend and frontend, which lets you swap between Docker and local servers without changing URLs.
+
+### 3.3 Domains and Traefik routing
+
+You can also run the stack using subdomains under `localhost.tiangolo.com` to mimic production-style routing.
+
+- Main domain is controlled by `DOMAIN` in `.env`.
+- When `DOMAIN=localhost.tiangolo.com`:
+  - Backend serves at `http://api.localhost.tiangolo.com`.
+  - Frontend serves at `http://dashboard.localhost.tiangolo.com`.
+  - Adminer: `http://localhost.tiangolo.com:8080`.
+  - Traefik: `http://localhost.tiangolo.com:8090`.
+  - MailCatcher: `http://localhost.tiangolo.com:1080`.
+- Traefik configuration for local development lives in `docker-compose.override.yml`.
+
+### 3.4 Local vs containerized dev servers
+
+For both backend and frontend you can:
+
+- Run the service from Docker only.
+- Stop the container and run a local dev server on the same port.
+
+The routing and URLs stay the same because ports match between Docker and local processes.
+
+## 4. Usage Examples
+
+### 4.1 Start the full stack with Docker
+
+From the repo root:
+
+```
 docker compose watch
 ```
 
-* Now you can open your browser and interact with these URLs:
+This starts all services and watches for code changes (where configured). It also uses the `.env` file to populate environment variables in containers.
 
-Frontend, built with Docker, with routes handled based on the path: http://localhost:5173
+To follow logs for all services in another terminal:
 
-Backend, JSON based web API based on OpenAPI: http://localhost:8000
-
-Automatic interactive documentation with Swagger UI (from the OpenAPI backend): http://localhost:8000/docs
-
-Adminer, database web administration: http://localhost:8080
-
-Traefik UI, to see how the routes are being handled by the proxy: http://localhost:8090
-
-**Note**: The first time you start your stack, it might take a minute for it to be ready. While the backend waits for the database to be ready and configures everything. You can check the logs to monitor it.
-
-To check the logs, run (in another terminal):
-
-```bash
-docker compose logs
+```
+docker compose logs -f
 ```
 
-To check the logs of a specific service, add the name of the service, e.g.:
+To see logs for a single service, for example the backend:
 
-```bash
-docker compose logs backend
+```
+docker compose logs -f backend
 ```
 
-## Local Development
+### 4.2 Switch the frontend from container to local dev server
 
-The Docker Compose files are configured so that each of the services is available in a different port in `localhost`.
+You might want faster hot-reload or local tooling for the frontend while keeping the rest of the stack in Docker.
 
-For the backend and frontend, they use the same port that would be used by their local development server, so, the backend is at `http://localhost:8000` and the frontend at `http://localhost:5173`.
+- Stop the `frontend` container:
 
-This way, you could turn off a Docker Compose service and start its local development service, and everything would keep working, because it all uses the same ports.
+  ```
+  docker compose stop frontend
+  ```
 
-For example, you can stop that `frontend` service in the Docker Compose, in another terminal, run:
+- Start the local frontend dev server:
 
-```bash
-docker compose stop frontend
+  ```
+  cd frontend
+  npm install
+  npm run dev
+  ```
+
+- Access the frontend at:
+  - `http://localhost:5173` (ports are the same as in Docker).
+
+When done, stop the local dev server and restart the container if needed:
+
+```
+docker compose up -d frontend
 ```
 
-And then start the local frontend development server:
+### 4.3 Switch the backend from container to local dev server
 
-```bash
-cd frontend
-npm run dev
+Similarly, you can run the backend locally while leaving the rest of the stack in Docker.
+
+- Stop the `backend` container:
+
+  ```
+  docker compose stop backend
+  ```
+
+- Start the local FastAPI dev server:
+
+  ```
+  cd backend
+  uv run fastapi dev app/main.py
+  ```
+
+- Access the backend at:
+  - `http://localhost:8000`
+  - Docs: `http://localhost:8000/docs`
+
+To switch back to the containerized backend, stop the local dev server and run:
+
+```
+docker compose up -d backend
 ```
 
-Or you could stop the `backend` Docker Compose service:
+### 4.4 Configure `localhost.tiangolo.com` routing
 
-```bash
-docker compose stop backend
-```
+To test production-like subdomains locally:
 
-And then you can run the local development server for the backend:
+- Edit `.env` at the repo root and set:
 
-```bash
-cd backend
-fastapi dev app/main.py
-```
+  ```
+  DOMAIN=localhost.tiangolo.com
+  ```
 
-## Docker Compose in `localhost.tiangolo.com`
+- Restart the stack so Traefik picks up the new domain:
 
-When you start the Docker Compose stack, it uses `localhost` by default, with different ports for each service (backend, frontend, adminer, etc).
+  ```
+  docker compose down
+  docker compose watch
+  ```
 
-When you deploy it to production (or staging), it will deploy each service in a different subdomain, like `api.example.com` for the backend and `dashboard.example.com` for the frontend.
+- Use these URLs:
+  - Frontend: `http://dashboard.localhost.tiangolo.com`
+  - Backend: `http://api.localhost.tiangolo.com`
+  - Swagger UI: `http://api.localhost.tiangolo.com/docs`
+  - ReDoc: `http://api.localhost.tiangolo.com/redoc`
+  - Adminer: `http://localhost.tiangolo.com:8080`
+  - Traefik: `http://localhost.tiangolo.com:8090`
+  - MailCatcher: `http://localhost.tiangolo.com:1080`
 
-In the guide about [deployment](deployment.md) you can read about Traefik, the configured proxy. That's the component in charge of transmitting traffic to each service based on the subdomain.
+`localhost.tiangolo.com` and all its subdomains resolve to `127.0.0.1`, so you do not need additional host file entries.
 
-If you want to test that it's all working locally, you can edit the local `.env` file, and change:
+### 4.5 Update environment variables safely
 
-```dotenv
-DOMAIN=localhost.tiangolo.com
-```
+When you change environment variables (either in `.env` or your shell), restart the stack so containers receive the new values.
 
-That will be used by the Docker Compose files to configure the base domain for the services.
+- After editing `.env`:
 
-Traefik will use this to transmit traffic at `api.localhost.tiangolo.com` to the backend, and traffic at `dashboard.localhost.tiangolo.com` to the frontend.
+  ```
+  docker compose down
+  docker compose watch
+  ```
 
-The domain `localhost.tiangolo.com` is a special domain that is configured (with all its subdomains) to point to `127.0.0.1`. This way you can use that for your local development.
+- If you only need to restart a single service (for example, the backend):
 
-After you update it, run again:
+  ```
+  docker compose restart backend
+  ```
 
-```bash
-docker compose watch
-```
+Keep in mind that secrets and credentials should be handled carefully and may be excluded from version control depending on your workflow.
 
-When deploying, for example in production, the main Traefik is configured outside of the Docker Compose files. For local development, there's an included Traefik in `docker-compose.override.yml`, just to let you test that the domains work as expected, for example with `api.localhost.tiangolo.com` and `dashboard.localhost.tiangolo.com`.
+### 4.6 Use pre-commit locally
 
-## Docker Compose files and env vars
+The project includes a pre-commit configuration for linting and formatting.
 
-There is a main `docker-compose.yml` file with all the configurations that apply to the whole stack, it is used automatically by `docker compose`.
+- Install hooks into this repo (from the root):
 
-And there's also a `docker-compose.override.yml` with overrides for development, for example to mount the source code as a volume. It is used automatically by `docker compose` to apply overrides on top of `docker-compose.yml`.
+  ```
+  uv run pre-commit install
+  ```
 
-These Docker Compose files use the `.env` file containing configurations to be injected as environment variables in the containers.
+- Run checks on all files:
 
-They also use some additional configurations taken from environment variables set in the scripts before calling the `docker compose` command.
+  ```
+  uv run pre-commit run --all-files
+  ```
 
-After changing variables, make sure you restart the stack:
+Pre-commit will then run automatically before each commit and help keep code style consistent.
 
-```bash
-docker compose watch
-```
+## 5. Dependencies & Interactions
 
-## The .env file
+- `docker-compose.yml`
+  - Core service definitions and networking.
+  - Reads configuration from `.env`.
+- `docker-compose.override.yml`
+  - Dev-time overrides (volumes, ports, Traefik for local routing).
+  - Included automatically when you run `docker compose`.
+- `.env`
+  - Central place for configuration and secrets used by the stack.
+  - Changing values requires a container restart to take effect.
+- `backend/`
+  - Contains the FastAPI application.
+  - Expects supporting services (database, etc.) to be available via Docker networking.
+- `frontend/`
+  - Contains the frontend application.
+  - Talks to the backend via the configured API URL (by default `http://localhost:8000` or `http://api.localhost.tiangolo.com`).
 
-The `.env` file is the one that contains all your configurations, generated keys and passwords, etc.
+### Idiosyncrasies
 
-Depending on your workflow, you could want to exclude it from Git, for example if your project is public. In that case, you would have to make sure to set up a way for your CI tools to obtain it while building or deploying your project.
+- Ports are deliberately aligned between Docker containers and local dev servers so you can swap implementations without changing URLs in your browser or environment.
+- Local Traefik is only for development and lives inside Docker; in production, Traefik (or another proxy) is typically managed outside this compose stack.
+- Some scripts or tooling may rely on environment variables set before calling `docker compose`; check any project-specific scripts under `scripts/` if you see unexpected behavior.
 
-One way to do it could be to add each environment variable to your CI/CD system, and updating the `docker-compose.yml` file to read that specific env var instead of reading the `.env` file.
+## 6. Further Reading / Related Docs
 
-## Pre-commits and code linting
-
-we are using a tool called [pre-commit](https://pre-commit.com/) for code linting and formatting.
-
-When you install it, it runs right before making a commit in git. This way it ensures that the code is consistent and formatted even before it is committed.
-
-You can find a file `.pre-commit-config.yaml` with configurations at the root of the project.
-
-#### Install pre-commit to run automatically
-
-`pre-commit` is already part of the dependencies of the project, but you could also install it globally if you prefer to, following [the official pre-commit docs](https://pre-commit.com/).
-
-After having the `pre-commit` tool installed and available, you need to "install" it in the local repository, so that it runs automatically before each commit.
-
-Using `uv`, you could do it with:
-
-```bash
-❯ uv run pre-commit install
-pre-commit installed at .git/hooks/pre-commit
-```
-
-Now whenever you try to commit, e.g. with:
-
-```bash
-git commit
-```
-
-...pre-commit will run and check and format the code you are about to commit, and will ask you to add that code (stage it) with git again before committing.
-
-Then you can `git add` the modified/fixed files again and now you can commit.
-
-#### Running pre-commit hooks manually
-
-you can also run `pre-commit` manually on all the files, you can do it using `uv` with:
-
-```bash
-❯ uv run pre-commit run --all-files
-check for added large files..............................................Passed
-check toml...............................................................Passed
-check yaml...............................................................Passed
-ruff.....................................................................Passed
-ruff-format..............................................................Passed
-eslint...................................................................Passed
-prettier.................................................................Passed
-```
-
-## URLs
-
-The production or staging URLs would use these same paths, but with your own domain.
-
-### Development URLs
-
-Development URLs, for local development.
-
-Frontend: http://localhost:5173
-
-Backend: http://localhost:8000
-
-Automatic Interactive Docs (Swagger UI): http://localhost:8000/docs
-
-Automatic Alternative Docs (ReDoc): http://localhost:8000/redoc
-
-Adminer: http://localhost:8080
-
-Traefik UI: http://localhost:8090
-
-MailCatcher: http://localhost:1080
-
-### Development URLs with `localhost.tiangolo.com` Configured
-
-Development URLs, for local development.
-
-Frontend: http://dashboard.localhost.tiangolo.com
-
-Backend: http://api.localhost.tiangolo.com
-
-Automatic Interactive Docs (Swagger UI): http://api.localhost.tiangolo.com/docs
-
-Automatic Alternative Docs (ReDoc): http://api.localhost.tiangolo.com/redoc
-
-Adminer: http://localhost.tiangolo.com:8080
-
-Traefik UI: http://localhost.tiangolo.com:8090
-
-MailCatcher: http://localhost.tiangolo.com:1080
+- `./deployment.md` — how deployment works and how Traefik is configured outside local development.
+- `./docker-compose.yml` — main Docker Compose configuration for all services.
+- `./docker-compose.override.yml` — local development overrides, including Traefik and volume mounts.
+- `./.env` — environment configuration used by Docker Compose and the applications.
+- `./.pre-commit-config.yaml` — linting and formatting hooks run by `pre-commit`.

@@ -2,6 +2,7 @@ import uuid
 
 from pydantic import EmailStr
 from sqlmodel import Field, Relationship, SQLModel
+from typing import Literal
 
 
 # Shared properties
@@ -94,6 +95,12 @@ class ItemsPublic(SQLModel):
 
 # Generic message
 class Message(SQLModel):
+    message: str
+
+
+class ErrorResponse(SQLModel):
+    error: Literal["conflict", "validation", "not_found", "forbidden", "unauthorized"] = "validation"
+    field: str | None = None
     message: str
 
 

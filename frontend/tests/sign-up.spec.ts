@@ -95,9 +95,8 @@ test("Sign up with existing email", async ({ page }) => {
   await fillForm(page, fullName, email, password, password)
   await page.getByRole("button", { name: "Sign Up" }).click()
 
-  await page
-    .getByText("The user with this email already exists in the system")
-    .click()
+  // Expect inline error near the email field
+  await expect(page.getByText("Already in use")).toBeVisible()
 })
 
 test("Sign up with weak password", async ({ page }) => {

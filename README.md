@@ -52,6 +52,36 @@
 
 [![API docs](img/docs.png)](https://github.com/fastapi/full-stack-fastapi-template)
 
+## Multi-tenant Organizations
+
+This project includes multi-tenant organization support:
+
+- Tables: `organization`, `membership (user_id, org_id, role)`, and `item (org_id, owner_id, ...)`.
+- JWT includes `active_org_id`. All reads/writes are scoped to this org.
+- RBAC: only org admins can invite/remove members and update/delete orgs.
+- Frontend has an Org Switcher in the navbar and an Org Members page.
+- Ops: Alembic migration adds orgs/memberships and `org_id` to items. Initial data seeds two orgs with users.
+
+### Run with Docker Compose
+
+- Ensure your `.env` files are configured (see [development.md](./development.md)).
+- Start the stack:
+
+```bash
+docker compose up --build
+```
+
+- API: http://localhost/api/v1
+- Frontend: http://localhost
+
+To regenerate the frontend client after API changes:
+
+```bash
+cd frontend
+npm install
+npm run generate
+```
+
 ## How To Use It
 
 You can **just fork or clone** this repository and use it as is.

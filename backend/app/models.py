@@ -111,3 +111,10 @@ class TokenPayload(SQLModel):
 class NewPassword(SQLModel):
     token: str
     new_password: str = Field(min_length=8, max_length=40)
+
+
+# Standard API error response model
+class APIError(SQLModel):
+    error: str
+    field: str | None = None
+    message: str

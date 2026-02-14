@@ -3,6 +3,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import col, delete, func, select
+from sqlalchemy.exc import IntegrityError
 
 from app import crud
 from app.api.deps import (
@@ -23,6 +24,7 @@ from app.models import (
     UsersPublic,
     UserUpdate,
     UserUpdateMe,
+    APIError,
 )
 from app.utils import generate_new_account_email, send_email
 
@@ -49,7 +51,10 @@ def read_users(session: SessionDep, skip: int = 0, limit: int = 100) -> Any:
 
 
 @router.post(
-    "/", dependencies=[Depends(get_current_active_superuser)], response_model=UserPublic
+    "/",
+    dependencies=[Depends(get_current_active_superuser)],
+    response_model=UserPublic,
+    responses={409: {"model": APIError}},
 )
 def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
     """
@@ -58,11 +63,18 @@ def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
     user = crud.get_user_by_email(session=session, email=user_in.email)
     if user:
         raise HTTPException(
-            status_code=400,
-            detail="The user with this email already exists in the system.",
+            status_code=409,
+            detail={"error": "conflict", "field": "email", "message": "Already in use"},
         )
 
-    user = crud.create_user(session=session, user_create=user_in)
+    try:
+        user = crud.create_user(session=session, user_create=user_in)
+    except IntegrityError:
+        # Fallback in case of race condition violating unique constraint
+        raise HTTPException(
+            status_code=409,
+            detail={"error": "conflict", "field": "email", "message": "Already in use"},
+        )
     if settings.emails_enabled and user_in.email:
         email_data = generate_new_account_email(
             email_to=user_in.email, username=user_in.email, password=user_in.password
@@ -139,7 +151,7 @@ def delete_user_me(session: SessionDep, current_user: CurrentUser) -> Any:
     return Message(message="User deleted successfully")
 
 
-@router.post("/signup", response_model=UserPublic)
+@router.post("/signup", response_model=UserPublic, responses={409: {"model": APIError}})
 def register_user(session: SessionDep, user_in: UserRegister) -> Any:
     """
     Create new user without the need to be logged in.
@@ -147,11 +159,17 @@ def register_user(session: SessionDep, user_in: UserRegister) -> Any:
     user = crud.get_user_by_email(session=session, email=user_in.email)
     if user:
         raise HTTPException(
-            status_code=400,
-            detail="The user with this email already exists in the system",
+            status_code=409,
+            detail={"error": "conflict", "field": "email", "message": "Already in use"},
         )
     user_create = UserCreate.model_validate(user_in)
-    user = crud.create_user(session=session, user_create=user_create)
+    try:
+        user = crud.create_user(session=session, user_create=user_create)
+    except IntegrityError:
+        raise HTTPException(
+            status_code=409,
+            detail={"error": "conflict", "field": "email", "message": "Already in use"},
+        )
     return user
 
 

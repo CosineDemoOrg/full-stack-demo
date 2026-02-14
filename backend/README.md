@@ -163,7 +163,29 @@ $ alembic upgrade head
 
 If you don't want to start with the default models and want to remove them / modify them, from the beginning, without having any previous revision, you can remove the revision files (`.py` Python files) under `./backend/app/alembic/versions/`. And then create a first migration as described above.
 
-## Email Templates
+## Notifications
+
+Email flows (welcome, password recovery, test email) are extracted into `./backend/app/notifications/` with a provider interface.
+
+- Providers:
+  - `ConsoleProvider`: writes structured logs, useful for local dev.
+  - `SMTPProvider`: sends emails via SMTP using the existing `emails` library.
+
+- Configuration:
+  - Set `NOTIFICATIONS_PROVIDER` in the top-level `.env`:
+    - `console` (default): logs only.
+    - `smtp`: sends via SMTP. Ensure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAILS_FROM_EMAIL` are configured.
+
+- Async sending:
+  - API routes schedule notifications via FastAPI `BackgroundTasks` to return immediately (optimistic UI).
+
+- Files:
+  - `app/notifications/providers/base.py`: abstract `NotificationProvider` and `get_provider`.
+  - `app/notifications/providers/console.py`: console provider.
+  - `app/notifications/providers/smtp.py`: SMTP provider.
+  - `app/notifications/service.py`: template rendering and flow helpers.
+
+### Email Templates
 
 The email templates are in `./backend/app/email-templates/`. Here, there are two directories: `build` and `src`. The `src` directory contains the source files that are used to build the final email templates. The `build` directory contains the final email templates that are used by the application.
 

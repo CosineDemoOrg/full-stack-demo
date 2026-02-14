@@ -216,6 +216,10 @@ The input variables, with their default values (some auto generated) are:
 
 Backend docs: [backend/README.md](./backend/README.md).
 
+### Notifications
+
+The backend now supports pluggable notification providers (Console or SMTP) and sends emails in FastAPI BackgroundTasks for optimistic UX. See the "Notifications" section in [backend/README.md](./backend/README.md#notifications).
+
 ## Frontend Development
 
 Frontend docs: [frontend/README.md](./frontend/README.md).

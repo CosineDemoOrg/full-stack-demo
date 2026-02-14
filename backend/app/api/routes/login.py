@@ -4,13 +4,14 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.security import OAuth2PasswordRequestForm
+from sqlmodel import select
 
 from app import crud
 from app.api.deps import CurrentUser, SessionDep, get_current_active_superuser
 from app.core import security
 from app.core.config import settings
 from app.core.security import get_password_hash
-from app.models import Message, NewPassword, Token, UserPublic
+from app.models import Message, NewPassword, Token, UserPublic, Membership
 from app.utils import (
     generate_password_reset_token,
     generate_reset_password_email,
@@ -35,12 +36,17 @@ def login_access_token(
         raise HTTPException(status_code=400, detail="Incorrect email or password")
     elif not user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    return Token(
-        access_token=security.create_access_token(
-            user.id, expires_delta=access_token_expires
-        )
+    # Pick first org membership as active_org_id if exists
+    first_membership = session.exec(
+        select(Membership).where(Membership.user_id == user.id)
+    ).first()
+    active_org_id = str(first_membership.org_id) if first_membership else None  # type: ignore
+    access_token = security.create_access_token(
+        subject=user.id,
+        expires_delta=settings.ACCESS_TOKEN_EXPIRE_MINUTES,
+        active_org_id=active_org_id,
     )
+    return Token(access_token=access_token)
 
 
 @router.post("/login/test-token", response_model=UserPublic)

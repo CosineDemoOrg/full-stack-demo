@@ -152,6 +152,26 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 
 Copy the content and use that as password / secret key. And run that again to generate another secure key.
 
+## Notifications
+
+The template includes a notifications system used for email flows (welcome and password recovery).
+
+- Providers:
+  - `console` (default): logs notifications to the console; useful in local development.
+  - `smtp`: sends emails via SMTP using your configured server.
+
+- Configuration:
+  - Set `NOTIFICATIONS_PROVIDER` in your `.env` to either `console` or `smtp`.
+  - For SMTP, also set:
+    - `SMTP_HOST`, `SMTP_PORT`, `SMTP_TLS`/`SMTP_SSL`
+    - `SMTP_USER`, `SMTP_PASSWORD` (if required)
+    - `EMAILS_FROM_NAME`, `EMAILS_FROM_EMAIL`
+
+- Switching providers:
+  - Change `NOTIFICATIONS_PROVIDER` and restart the backend.
+
+The backend uses FastAPI `BackgroundTasks` to send notifications asynchronously so API responses return immediately. Errors are captured and logged with structured fields.
+
 ## How To Use It - Alternative With Copier
 
 This repository also supports generating a new project using [Copier](https://copier.readthedocs.io).

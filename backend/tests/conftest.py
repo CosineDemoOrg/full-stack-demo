@@ -35,6 +35,7 @@ def override_get_current_user() -> User:
     return User(
         id=MOCK_USER_PUBLIC_1.id,
         email=MOCK_USER_PUBLIC_1.email,
+        username=MOCK_USER_PUBLIC_1.email,
         is_active=MOCK_USER_PUBLIC_1.is_active,
         is_superuser=True,
         full_name=MOCK_USER_PUBLIC_1.full_name,

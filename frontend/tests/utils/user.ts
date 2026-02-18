@@ -9,6 +9,7 @@ export async function signUpNewUser(
   await page.goto("/signup")
 
   await page.getByPlaceholder("Full Name").fill(name)
+  await page.getByPlaceholder("Username").fill(email.split("@")[0] || email)
   await page.getByPlaceholder("Email").fill(email)
   await page.getByPlaceholder("Password", { exact: true }).fill(password)
   await page.getByPlaceholder("Confirm Password").fill(password)

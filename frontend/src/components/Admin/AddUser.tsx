@@ -47,6 +47,7 @@ const AddUser = () => {
     criteriaMode: "all",
     defaultValues: {
       email: "",
+      username: "",
       full_name: "",
       password: "",
       confirm_password: "",
@@ -111,6 +112,21 @@ const AddUser = () => {
                   })}
                   placeholder="Email"
                   type="email"
+                />
+              </Field>
+
+              <Field
+                required
+                invalid={!!errors.username}
+                errorText={errors.username?.message}
+                label="Username"
+              >
+                <Input
+                  {...register("username", {
+                    required: "Username is required",
+                  })}
+                  placeholder="Username"
+                  type="text"
                 />
               </Field>
 

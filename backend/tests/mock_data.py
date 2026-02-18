@@ -18,12 +18,14 @@ TEST_USER_ID_2 = uuid4()
 
 MOCK_USER_CREATE_1 = UserCreate(
     email="alice@example.com",
+    username="alice",
     password="strongpassword1",
     full_name="Alice Example",
 )
 
 MOCK_USER_CREATE_2 = UserCreate(
     email="bob@example.com",
+    username="bob",
     password="strongpassword2",
     full_name="Bob Example",
 )
@@ -35,6 +37,7 @@ MOCK_USER_UPDATE_1 = UserUpdate(
 MOCK_USER_PUBLIC_1 = UserPublic(
     id=TEST_USER_ID_1,
     email="alice@example.com",
+    username="alice",
     is_active=True,
     is_superuser=False,
     full_name="Alice Example",
@@ -43,6 +46,7 @@ MOCK_USER_PUBLIC_1 = UserPublic(
 MOCK_USER_PUBLIC_2 = UserPublic(
     id=TEST_USER_ID_2,
     email="bob@example.com",
+    username="bob",
     is_active=True,
     is_superuser=False,
     full_name="Bob Example",

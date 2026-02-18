@@ -282,6 +282,11 @@ export const UserCreateSchema = {
             format: 'email',
             title: 'Email'
         },
+        username: {
+            type: 'string',
+            maxLength: 255,
+            title: 'Username'
+        },
         is_active: {
             type: 'boolean',
             title: 'Is Active',
@@ -312,7 +317,7 @@ export const UserCreateSchema = {
         }
     },
     type: 'object',
-    required: ['email', 'password'],
+    required: ['email', 'username', 'password'],
     title: 'UserCreate'
 } as const;
 
@@ -323,6 +328,11 @@ export const UserPublicSchema = {
             maxLength: 255,
             format: 'email',
             title: 'Email'
+        },
+        username: {
+            type: 'string',
+            maxLength: 255,
+            title: 'Username'
         },
         is_active: {
             type: 'boolean',
@@ -353,7 +363,7 @@ export const UserPublicSchema = {
         }
     },
     type: 'object',
-    required: ['email', 'id'],
+    required: ['email', 'username', 'id'],
     title: 'UserPublic'
 } as const;
 
@@ -364,6 +374,11 @@ export const UserRegisterSchema = {
             maxLength: 255,
             format: 'email',
             title: 'Email'
+        },
+        username: {
+            type: 'string',
+            maxLength: 255,
+            title: 'Username'
         },
         password: {
             type: 'string',
@@ -385,7 +400,7 @@ export const UserRegisterSchema = {
         }
     },
     type: 'object',
-    required: ['email', 'password'],
+    required: ['email', 'username', 'password'],
     title: 'UserRegister'
 } as const;
 

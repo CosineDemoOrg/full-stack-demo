@@ -63,6 +63,7 @@ export type UpdatePassword = {
 
 export type UserCreate = {
     email: string;
+    username: string;
     is_active?: boolean;
     is_superuser?: boolean;
     full_name?: (string | null);
@@ -71,6 +72,7 @@ export type UserCreate = {
 
 export type UserPublic = {
     email: string;
+    username: string;
     is_active?: boolean;
     is_superuser?: boolean;
     full_name?: (string | null);
@@ -79,6 +81,7 @@ export type UserPublic = {
 
 export type UserRegister = {
     email: string;
+    username: string;
     password: string;
     full_name?: (string | null);
 };

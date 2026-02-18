@@ -2,6 +2,8 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import col, delete, func, select
 
 from app import crud
@@ -29,6 +31,9 @@ from app.utils import generate_new_account_email, send_email
 router = APIRouter(prefix="/users", tags=["users"])
 
 
+def conflict_response(field: str) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"error": "conflict", "field": field})
+
 @router.get(
     "/",
     dependencies=[Depends(get_current_active_superuser)],
@@ -49,9 +54,7 @@ def read_users(session: SessionDep, skip: int = 0, limit: int = 100) -> Any:
 
 
 @router.post(
-    "/", dependencies=[Depends(get_current_active_superuser)], response_model=UserPublic
-)
-def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
+    "/", dependencies=[Depends(get_current_active_superuser)], respons</old_code><new_code>def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
     """
     Create new user.
     """
@@ -62,10 +65,17 @@ def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
             detail="The user with this email already exists in the system.",
         )
 
+    user = crud.get_user_by_username(session=session, username=user_in.username)
+    if user:
+        raise HTTPException(
+            status_code=400,
+            detail="The user with this username already exists in the system.",
+        )
+
     user = crud.create_user(session=session, user_create=user_in)
     if settings.emails_enabled and user_in.email:
         email_data = generate_new_account_email(
-            email_to=user_in.email, username=user_in.email, password=user_in.password
+            email_to=user_in.email, username=user_in.username, password=user_in.password
         )
         send_email(
             email_to=user_in.email,
@@ -136,22 +146,31 @@ def delete_user_me(session: SessionDep, current_user: CurrentUser) -> Any:
         )
     session.delete(current_user)
     session.commit()
-    return Message(message="User deleted successfully")
-
-
-@router.post("/signup", response_model=UserPublic)
+    return Message(message="User dele</old_code><new_code>@router.post("/signup", response_model=UserPublic)
 def register_user(session: SessionDep, user_in: UserRegister) -> Any:
     """
     Create new user without the need to be logged in.
     """
     user = crud.get_user_by_email(session=session, email=user_in.email)
     if user:
-        raise HTTPException(
-            status_code=400,
-            detail="The user with this email already exists in the system",
-        )
+        return conflict_response("email")
+
+    user = crud.get_user_by_username(session=session, username=user_in.username)
+    if user:
+        return conflict_response("username")
+
     user_create = UserCreate.model_validate(user_in)
-    user = crud.create_user(session=session, user_create=user_create)
+    try:
+        user = crud.create_user(session=session, user_create=user_create)
+    except IntegrityError as e:
+        session.rollback()
+        error_text = str(getattr(e, "orig", e)).lower()
+        if "username" in error_text:
+            return conflict_response("username")
+        if "email" in error_text:
+            return conflict_response("email")
+        raise
+
     return user
 
 

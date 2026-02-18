@@ -37,12 +37,14 @@ function SignUp() {
     register,
     handleSubmit,
     getValues,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<UserRegisterForm>({
     mode: "onBlur",
     criteriaMode: "all",
     defaultValues: {
       email: "",
+      username: "",
       full_name: "",
       password: "",
       confirm_password: "",
@@ -50,7 +52,22 @@ function SignUp() {
   })
 
   const onSubmit: SubmitHandler<UserRegisterForm> = (data) => {
-    signUpMutation.mutate(data)
+    signUpMutation.mutate(data, {
+      onError: (err) => {
+        const body = (err as any)?.body
+        if ((err as any)?.status === 409 && body?.error === "conflict") {
+          const field = body?.field
+          const message =
+            field === "email"
+              ? "Email already exists"
+              : field === "username"
+                ? "Username already exists"
+                : "Already exists"
+
+          setError(field as any, { message })
+        }
+      },
+    })
   }
 
   return (
@@ -84,6 +101,19 @@ function SignUp() {
                 required: "Full Name is required",
               })}
               placeholder="Full Name"
+              type="text"
+            />
+          </InputGroup>
+        </Field>
+
+        <Field invalid={!!errors.username} errorText={errors.username?.message}>
+          <InputGroup w="100%" startElement={<FiUser />}>
+            <Input
+              minLength={3}
+              {...register("username", {
+                required: "Username is required",
+              })}
+              placeholder="Username"
               type="text"
             />
           </InputGroup>

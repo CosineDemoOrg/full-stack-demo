@@ -97,6 +97,12 @@ class Message(SQLModel):
     message: str
 
 
+class ConflictError(SQLModel):
+    error: str
+    field: str
+    message: str
+
+
 # JSON payload containing access token
 class Token(SQLModel):
     access_token: str

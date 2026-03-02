@@ -36,9 +36,17 @@ def login_access_token(
     elif not user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+
+    # Set default active organization to the first membership if available
+    active_org_id: str | None = None
+    if user.memberships:
+        active_org_id = str(user.memberships[0].org_id)
+
     return Token(
         access_token=security.create_access_token(
-            user.id, expires_delta=access_token_expires
+            user.id,
+            expires_delta=access_token_expires,
+            active_org_id=active_org_id,
         )
     )
 

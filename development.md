@@ -34,6 +34,21 @@ To check the logs of a specific service, add the name of the service, e.g.:
 docker compose logs backend
 ```
 
+### Seed Data
+
+A simple seed script is included to create 2 organizations and example users/memberships.
+
+Run it after the stack is up:
+
+```bash
+docker compose exec backend bash -lc "uv run scripts/seed.py"
+```
+
+This will create:
+- Orgs: "Acme Inc" and "Umbrella Corp"
+- Users: superuser (from .env), alice@example.com, bob@example.com
+- Memberships: superuser as admin of both orgs, Alice as member of Acme, Bob as member of Umbrella.
+
 ## Local Development
 
 The Docker Compose files are configured so that each of the services is available in a different port in `localhost`.

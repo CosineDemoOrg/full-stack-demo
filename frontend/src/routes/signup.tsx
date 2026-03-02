@@ -37,6 +37,7 @@ function SignUp() {
     register,
     handleSubmit,
     getValues,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<UserRegisterForm>({
     mode: "onBlur",
@@ -49,8 +50,21 @@ function SignUp() {
     },
   })
 
-  const onSubmit: SubmitHandler<UserRegisterForm> = (data) => {
-    signUpMutation.mutate(data)
+  const onSubmit: SubmitHandler<UserRegisterForm> = async (data) => {
+    try {
+      await signUpMutation.mutateAsync(data)
+    } catch (err: any) {
+      const status = err?.status
+      const body = err?.body as any
+      if (status === 409 && body?.error === "conflict") {
+        const field = (body?.field as "email" | "full_name" | "password") || "email"
+        const message = body?.message || "Already in use"
+        setError(field as any, { type: "server", message })
+        return
+      }
+      // rethrow to let the global onError handler show a toast
+      throw err
+    }
   }
 
   return (

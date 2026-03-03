@@ -170,3 +170,60 @@ The email templates are in `./backend/app/email-templates/`. Here, there are two
 Before continuing, ensure you have the [MJML extension](https://marketplace.visualstudio.com/items?itemName=attilabuti.vscode-mjml) installed in your VS Code.
 
 Once you have the MJML extension installed, you can create a new email template in the `src` directory. After creating the new email template and with the `.mjml` file open in your editor, open the command palette with `Ctrl+Shift+P` and search for `MJML: Export to HTML`. This will convert the `.mjml` file to a `.html` file and now you can save it in the build directory.
+
+## Notifications
+
+Email flows (welcome, password recovery, test) are implemented via a provider interface under `app/notifications/`.
+
+- Provider interface: `app/notifications/provider.py` exposes:
+  - `EmailProvider` ABC
+  - `ConsoleEmailProvider` (logs only)
+  - `SmtpEmailProvider` (sends via SMTP)
+  - `get_email_provider()` factory based on settings
+- Service: `app/notifications/service.py` contains `NotificationService` with helpers to render templates and send:
+  - `send_test_email(email_to=...)`
+  - `send_welcome_email(email_to=..., username=..., password=...)`
+  - `send_password_reset_email(email_to=..., email=..., token=...)`
+
+### Configuration
+
+Switch providers via `.env`:
+
+```
+NOTIFICATIONS_PROVIDER=console  # or "smtp"
+```
+
+SMTP settings (used only when `NOTIFICATIONS_PROVIDER=smtp`):
+
+- `SMTP_HOST`
+- `SMTP_PORT` (default 587)
+- `SMTP_TLS` / `SMTP_SSL`
+- `SMTP_USER`
+- `SMTP_PASSWORD`
+- `EMAILS_FROM_EMAIL`
+- `EMAILS_FROM_NAME` (defaults to `PROJECT_NAME`)
+
+When using the console provider, messages are logged with structured fields.
+
+### Background sending
+
+All API endpoints that send emails now use FastAPI `BackgroundTasks` to queue the send and return immediately:
+
+- `POST /api/v1/login/password-recovery/{email}` queues the password reset email and returns a 200 quickly.
+- `POST /api/v1/utils/test-email/` queues a test email.
+
+This improves responsiveness and supports an optimistic UI in the frontend.
+
+### Tests
+
+Unit tests for providers live in `backend/tests/notifications/test_providers.py`.
+
+- Verifies console provider does not raise.
+- Verifies SMTP provider errors when misconfigured.
+- Verifies SMTP provider integrates with the `emails` library (via monkeypatch).
+
+Run all tests:
+
+```bash
+bash ./scripts/test.sh
+```

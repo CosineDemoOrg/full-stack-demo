@@ -32,7 +32,7 @@ function RecoverPassword() {
     register,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<FormData>()
   const { showSuccessToast } = useCustomToast()
 
@@ -44,16 +44,17 @@ function RecoverPassword() {
 
   const mutation = useMutation({
     mutationFn: recoverPassword,
-    onSuccess: () => {
-      showSuccessToast("Password recovery email sent successfully.")
-      reset()
-    },
     onError: (err: ApiError) => {
+      // Show error as separate toast, but keep optimistic UI
       handleError(err)
     },
   })
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
+    // Optimistic UI: immediately notify and clear form
+    showSuccessToast("If an account exists, a recovery email will arrive shortly.")
+    reset()
+    // Fire and forget background request
     mutation.mutate(data)
   }
 
@@ -86,7 +87,7 @@ function RecoverPassword() {
           />
         </InputGroup>
       </Field>
-      <Button variant="solid" type="submit" loading={isSubmitting}>
+      <Button variant="solid" type="submit">
         Continue
       </Button>
     </Container>

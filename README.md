@@ -144,6 +144,21 @@ Read the [deployment.md](./deployment.md) docs for more details.
 
 Some environment variables in the `.env` file have a default value of `changethis`.
 
+### Notifications
+
+Email notifications (welcome emails, password recovery, and test emails) are sent through a pluggable notifications provider.
+
+The provider is configured in the root `.env` file with:
+
+- `NOTIFICATIONS_PROVIDER=console` (default): logs email payloads to the backend logs, useful for local development.
+- `NOTIFICATIONS_PROVIDER=smtp`: sends real emails using the SMTP settings (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAILS_FROM_EMAIL`, etc.).
+
+To switch providers:
+
+1. Update the `NOTIFICATIONS_PROVIDER` value in your `.env` file.
+2. Ensure the corresponding settings are configured (for example, SMTP details when using `smtp`).
+3. Restart the backend so the new configuration is picked up.
+
 You have to change them with a secret key, to generate secret keys you can run the following command:
 
 ```bash

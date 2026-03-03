@@ -97,6 +97,13 @@ class Message(SQLModel):
     message: str
 
 
+# Error model for consistent API error responses
+class ConflictError(SQLModel):
+    error: str = "conflict"
+    field: str
+    message: str = "Already in use"
+
+
 # JSON payload containing access token
 class Token(SQLModel):
     access_token: str

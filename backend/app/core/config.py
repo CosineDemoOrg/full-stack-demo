@@ -90,6 +90,17 @@ class Settings(BaseSettings):
     def emails_enabled(self) -> bool:
         return bool(self.SMTP_HOST and self.EMAILS_FROM_EMAIL)
 
+    # Notifications
+    NOTIFICATIONS_PROVIDER: Literal["console", "smtp"] = "console"
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def notifications_provider(self) -> Literal["console", "smtp"]:
+        # If emails are enabled and provider is not explicitly set to console, use smtp
+        if self.NOTIFICATIONS_PROVIDER == "smtp" or self.emails_enabled:
+            return "smtp"
+        return "console"
+
     EMAIL_TEST_USER: EmailStr = "test@example.com"
     FIRST_SUPERUSER: EmailStr
     FIRST_SUPERUSER_PASSWORD: str

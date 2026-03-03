@@ -6,12 +6,12 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
 from pydantic import ValidationError
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.core import security
 from app.core.config import settings
 from app.core.db import engine
-from app.models import TokenPayload, User
+from app.models import Membership, TokenPayload, User
 
 reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_STR}/login/access-token"
@@ -55,3 +55,28 @@ def get_current_active_superuser(current_user: CurrentUser) -> User:
             status_code=403, detail="The user doesn't have enough privileges"
         )
     return current_user
+
+
+def get_active_org_membership(session: SessionDep, token: TokenDep, current_user: CurrentUser) -> Membership:
+    try:
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[security.ALGORITHM]
+        )
+        token_data = TokenPayload(**payload)
+    except (InvalidTokenError, ValidationError):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Could not validate credentials",
+        )
+    if not token_data.active_org_id:
+        raise HTTPException(status_code=400, detail="No active organization selected")
+    statement = select(Membership).where(
+        (Membership.user_id == current_user.id) & (Membership.org_id == token_data.active_org_id) & (Membership.is_active == True)  # noqa: E712
+    )
+    membership = session.exec(statement).first()
+    if not membership:
+        raise HTTPException(status_code=403, detail="User not a member of this organization or invite not accepted")
+    return membership
+
+
+CurrentMembership = Annotated[Membership, Depends(get_active_org_membership)]
